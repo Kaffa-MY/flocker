@@ -27,7 +27,7 @@ from twisted.python.reflect import safe_repr
 from twisted.internet.defer import succeed, fail
 from twisted.python.filepath import FilePath
 from twisted.python.components import proxyForInterface
-from twisted.python.constants import Values, ValueConstant
+from twisted.python.constants import Values, ValueConstant, Names, NamedConstant
 
 from .. import (
     IDeployer, ILocalState, IStateChange, sequentially, in_parallel,
@@ -50,6 +50,46 @@ _logger = Logger()
 # XXX: Make this configurable. FLOC-2679
 DEFAULT_DATASET_SIZE = int(GiB(100).to_Byte().value)
 
+
+class DatasetStates(Names):
+    UNCREATED = NamedConstant()
+    NON_MANIFEST = NamedContext()
+    ATTACHED = NamedConstant()
+    ATTACHED_WITHOUT_FILESYSTEM = NamedConstant()
+    MOUNTED = NamedConstant()
+    DELETED = NamedConstant()
+
+class DesiredDatasetStates():
+    NON_MANIFEST = NamedContext()
+    MOUNTED = NamedConstant()
+    DELETED = NamedConstant()
+
+dataset_transitions = {
+    DesiredDatasetStates.NON_MANIFEST: {
+        DatasetStates.UNCREATED: CreateBlockDeviceDataset,
+        DatasetStates.NON_MANIFEST: Noop,
+        DatasetStates.ATTACHED: DetachVolume,
+        DatasetStates.ATTACHED_WITHOUT_FILESYSTEM: DetachVolume,
+        DatasetStates.MOUNTED: UnmountBlockDevice,
+        DatasetStates.DELETED: Error,
+    },
+    DesiredDatasetStates.MOUNTED: {
+        DatasetStates.UNCREATED: CreateBlockDeviceDataset,
+        DatasetStates.NON_MANIFEST: AttachVolume,
+        DatasetStates.ATTACHED: MountBlockDevice,
+        DatasetStates.ATTACHED_WITHOUT_FILESYSTEM: CreateFilesystem,
+        DatasetStates.MOUNTED: Noop,
+        DatasetStates.DELETED: Error,
+    },
+    DesiredDatasetStates.DELETED: {
+        DatasetStates.UNCREATED: Noop,
+        DatasetStates.NON_MANIFEST: DestroyBlockDeviceDataset,
+        DatasetStates.ATTACHED: DetatchVolume,
+        DatasetStates.ATTACHED_WITHOUT_FILESYSTEM: DetachVolume,
+        DatasetStates.MOUNTED: UnmountBlockDevice,
+        DatasetStates.DELETED: Noop,
+    },
+}
 
 class VolumeException(Exception):
     """
@@ -1622,79 +1662,13 @@ class BlockDeviceDeployer(PRecord):
         if local_node_state.applications is None:
             return in_parallel(changes=[])
 
-        not_in_use = NotInUseDatasets(local_node_state, configuration.leases)
+        changes = []
+        for dataset in datasets:
+            transition_factory = dataset_transitions[dataset.desired_state][dataset.current_state]
+            changes.append(transition_factory(dataset))
 
-        configured_manifestations = this_node_config.manifestations
+        return in_parallel(changes=changes)
 
-        configured_dataset_ids = set(
-            manifestation.dataset.dataset_id
-            for manifestation in configured_manifestations.values()
-            # Don't create deleted datasets
-            if not manifestation.dataset.deleted
-        )
-
-        local_dataset_ids = set(local_node_state.manifestations.keys())
-
-        manifestations_to_create = set()
-        all_dataset_ids = list(
-            dataset.dataset_id
-            for dataset, node
-            in cluster_state.all_datasets()
-        )
-        for dataset_id in configured_dataset_ids.difference(local_dataset_ids):
-            if dataset_id in all_dataset_ids:
-                continue
-            else:
-                manifestation = configured_manifestations[dataset_id]
-                # XXX: Make this configurable. FLOC-2679
-                if manifestation.dataset.maximum_size is None:
-                    manifestation = manifestation.transform(
-                        ['dataset', 'maximum_size'],
-                        DEFAULT_DATASET_SIZE
-                    )
-                manifestations_to_create.add(manifestation)
-
-        attaches = list(self._calculate_attaches(
-            local_node_state.devices,
-            configured_manifestations,
-            cluster_state.nonmanifest_datasets,
-            local_state.volumes
-        ))
-        mounts = list(self._calculate_mounts(
-            local_node_state.devices, local_node_state.paths,
-            configured_manifestations, local_state.volumes
-        ))
-        unmounts = list(self._calculate_unmounts(
-            local_node_state.paths, configured_manifestations,
-            local_state.volumes
-        ))
-
-        # XXX prevent the configuration of unsized datasets on blockdevice
-        # backends; cannot create block devices of unspecified size. FLOC-1579
-        creates = list(
-            CreateBlockDeviceDataset(
-                dataset=manifestation.dataset,
-                mountpoint=self._mountpath_for_manifestation(manifestation)
-            )
-            for manifestation
-            in manifestations_to_create
-        )
-
-        detaches = list(self._calculate_detaches(
-            local_node_state.devices, local_node_state.paths,
-            configured_manifestations, local_state.volumes
-        ))
-        deletes = self._calculate_deletes(
-            local_node_state, configured_manifestations, local_state.volumes)
-
-        # FLOC-1484 Support resize for block storage backends. See also
-        # FLOC-1875.
-
-        return in_parallel(changes=(
-            not_in_use(unmounts) + detaches +
-            attaches + mounts +
-            creates + not_in_use(deletes)
-        ))
 
     def _calculate_mounts(self, devices, paths, configured, volumes):
         """
