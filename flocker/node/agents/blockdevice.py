@@ -1307,7 +1307,7 @@ class BlockDeviceDeployer(PRecord):
                 # don't attempt to report the size.
                 # Why not? The size is available from the volume.
                 # It seems like state reporting bug and separate from
-                # (although blocking) FLOC-1806.
+                # (although blocking) IDEA-22.
                 # https://clusterhq.atlassian.net/browse/FLOC-1983
                 nonmanifest[dataset_id] = Dataset(dataset_id=dataset_id)
 
