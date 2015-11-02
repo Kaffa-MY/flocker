@@ -28,7 +28,10 @@ from twisted.python.reflect import safe_repr
 from twisted.internet.defer import succeed, fail
 from twisted.python.filepath import FilePath
 from twisted.python.components import proxyForInterface
-from twisted.python.constants import Values, ValueConstant
+from twisted.python.constants import (
+    Values, ValueConstant,
+    Names, NamedConstant,
+)
 
 from .. import (
     IDeployer, ILocalState, IStateChange, sequentially, in_parallel,
@@ -53,6 +56,30 @@ DEFAULT_DATASET_SIZE = int(GiB(100).to_Byte().value)
 
 # The metadata key for flocker profiles.
 PROFILE_METADATA_KEY = u"clusterhq:flocker:profile"
+
+
+class DatasetStates(Names):
+    UNCREATED = NamedConstant()
+    # CreateBlockDeviceDataset
+    # - dataset_id
+    # - maximum_size
+    NON_MANIFEST = NamedConstant()
+    # AttachVolume
+    # - blockdevice_id
+    # - compute_instance_id
+    ATTACHED = NamedConstant()
+    # MountBlockDevice
+    # - device_path
+    # - mount_point
+    ATTACHED_WITHOUT_FILESYSTEM = NamedConstant()
+    # CreateFilesystem
+    # - device_path
+    # - fstype
+    MOUNTED = NamedConstant()
+    # UnmountBlockDevice
+    # - device_path
+    DELETED = NamedConstant()
+    # Needs nothing
 
 
 class VolumeException(Exception):
