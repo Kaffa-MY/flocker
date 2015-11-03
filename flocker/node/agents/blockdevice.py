@@ -1190,7 +1190,7 @@ class BlockDeviceDeployerLocalState(PClass):
     """
     hostname = field(type=unicode, mandatory=True)
     node_uuid = field(type=UUID, mandatory=True)
-    datasets = pmap_field(xDataset)
+    datasets = pmap_field(unicode, xDataset)
 
     def shared_state_changes(self):
         """
