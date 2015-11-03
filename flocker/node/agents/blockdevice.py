@@ -20,7 +20,7 @@ from eliot.serializers import identity
 
 from zope.interface import implementer, Interface
 
-from pyrsistent import PRecord, PClass, field
+from pyrsistent import PRecord, PClass, field, pmap_field
 
 import psutil
 
@@ -40,7 +40,6 @@ from .. import (
 from .._deploy import NotInUseDatasets
 
 from ...control import NodeState, Manifestation, Dataset, NonManifestDatasets
-from ...control._model import pvector_field
 from ...common import auto_threaded
 
 
@@ -59,10 +58,10 @@ PROFILE_METADATA_KEY = u"clusterhq:flocker:profile"
 
 
 class DatasetStates(Names):
-    UNCREATED = NamedConstant()
-    # CreateBlockDeviceDataset
-    # - dataset_id
-    # - maximum_size
+    # UNCREATED = NamedConstant()
+    # # CreateBlockDeviceDataset
+    # # - dataset_id
+    # # - maximum_size
     NON_MANIFEST = NamedConstant()
     # AttachVolume
     # - blockdevice_id
@@ -71,15 +70,45 @@ class DatasetStates(Names):
     # MountBlockDevice
     # - device_path
     # - mount_point
-    ATTACHED_WITHOUT_FILESYSTEM = NamedConstant()
-    # CreateFilesystem
-    # - device_path
-    # - fstype
+    # # ATTACHED_WITHOUT_FILESYSTEM = NamedConstant()
+    # # # CreateFilesystem
+    # # # - device_path
+    # # # - fstype
     MOUNTED = NamedConstant()
     # UnmountBlockDevice
     # - device_path
-    DELETED = NamedConstant()
-    # Needs nothing
+    # DELETED = NamedConstant()
+    # # Needs nothing
+
+class xDataset(PClass):
+    """
+    Dataset as discovered by deployer.
+    """
+    state = field(
+        invariant=lambda state: state in DatasetStates.iterconstants(),
+        mandatory=True,
+    )
+    dataset_id = field(type=UUID, mandatory=True)
+    maximum_size = field(type=int, mandatory=True)
+    blockdevice_id = field(type=unicode, mandatory=True)
+    device_path = field(FilePath)
+    mount_point = field(FilePath)
+
+    def __invariant__(self):
+        expected_attributes = [
+            ((DatasetStates.ATTACHED, DatasetStates.MOUNTED),
+             "device_path",
+             "device_path only for attached and mounted xDataset."),
+            ((DatasetStates.MOUNTED,),
+             "mount_point",
+             "mount_point only for mounted xDataset."),
+        ]
+        for states, attribute, message in expected_attributes:
+            if (self.state in states) != hasattr(self, attribute):
+                return (False, message)
+        if self.state in (DatasetStates.DELETED):
+            return (False, "xDataset can't be in state DELETED.")
+        return (True, "")
 
 
 class VolumeException(Exception):
@@ -1133,9 +1162,9 @@ class BlockDeviceDeployerLocalState(PClass):
     :ivar volumes: A ``PVector`` of ``BlockDeviceVolume`` instances for all
         volumes in the cluster that this node is aware of.
     """
-    node_state = field(type=NodeState, mandatory=True)
-    nonmanifest_datasets = field(type=NonManifestDatasets, mandatory=True)
-    volumes = pvector_field(BlockDeviceVolume)
+    hostname = field(type=unicode, mandatory=True)
+    node_uuid = field(type=UUID, mandatory=True)
+    datasets = pmap_field(xDataset)
 
     def shared_state_changes(self):
         """
@@ -1143,7 +1172,48 @@ class BlockDeviceDeployerLocalState(PClass):
         These are the only parts of the state that need to be sent to the
         control service.
         """
-        return (self.node_state, self.nonmanifest_datasets)
+        manifestations = {}
+        paths = {}
+        devices = {}
+        nonmanifest_datasets = {}
+        for dataset in self.datasets.values():
+            dataset_id = dataset.dataset_id
+            if dataset.state == DatasetStates.MOUNTED:
+                manifestations[unicode(dataset)] = Manifestation(
+                    dataset=Dataset(
+                        dataset_id=dataset_id,
+                        maximum_size=dataset.maximum_size,
+                    ),
+                    primary=True,
+                )
+                paths[dataset_id] = dataset.mount_point
+            if dataset.state in (
+                DatasetStates.NON_MANIFEST, DatasetStates.ATTACHED,
+            ):
+                nonmanifest_datasets[unicode(dataset)] = Dataset(
+                    dataset_id=dataset_id,
+                    maximum_size=dataset.maximum_size,
+                )
+            if dataset.state in (
+                DatasetStates.MOUNTED, DatasetStates.ATTACHED,
+            ):
+                devices[dataset_id] = dataset.device_path
+
+        return (
+            NodeState(
+                uuid=self.node_uuid,
+                hostname=self.hostname,
+                manifestations=manifestations,
+                paths=paths,
+                devices=devices,
+                # Discovering these is ApplicationNodeDeployer's job we
+                # don't know anything about these:
+                applications=None,
+            ),
+            NonManifestDatasets(
+                datasets=nonmanifest_datasets,
+            ),
+        )
 
 
 @implementer(IDeployer)
@@ -1200,50 +1270,31 @@ class BlockDeviceDeployer(PRecord):
             )
         return self._async_block_device_api
 
-    def _get_system_mounts(self, volumes, compute_instance_id):
+    def _get_system_mounts(self):
         """
-        Load information about mounted filesystems related to the given
+        Load information about mounted filesystems.
         volumes.
 
-        :param list volumes: The ``BlockDeviceVolumes`` known to exist.  They
-            may or may not be attached to this host.  Only system mounts that
-            related to these volumes will be returned.
-
-        :param unicode compute_instance_id: This node's identifier.
-
-        :return: A ``dict`` mapping mount points (directories represented using
-            ``FilePath``) to dataset identifiers (as ``UUID``\ s) representing
-            all of the mounts on this system that were discovered and related
-            to ``volumes``.
+        :return: Mapping from block devices to mountpoints.
+        :rtype: ``dict`` mapping ``FilePath`` to ``FilePath``
         """
         partitions = psutil.disk_partitions()
-        device_to_dataset_id = {
-            self.block_device_api.get_device_path(volume.blockdevice_id):
-                volume.dataset_id
-            for volume
-            in volumes
-            if volume.attached_to == compute_instance_id
-        }
         return {
-            FilePath(partition.mountpoint):
-                device_to_dataset_id[FilePath(partition.device)]
+            FilePath(partition.device):
+            FilePath(partition.mountpoint)
             for partition
             in partitions
-            if FilePath(partition.device) in device_to_dataset_id
         }
 
-    def discover_state(self, node_state):
-        """
-        Find all block devices that are currently associated with this host and
-        return a ``NodeState`` containing only ``Manifestation`` instances and
-        their mount paths.
-        """
-        # FLOC-1819 Make this asynchronous
+    def _discover_raw_state(self):
         api = self.block_device_api
+
         compute_instance_id = api.compute_instance_id()
         volumes = api.list_volumes()
-        manifestations = {}
-        nonmanifest = {}
+
+        # XXX
+        volumes = [volume for volume in volumes if
+                   volume.attatched_to in (None, compute_instance_id)]
 
         def is_existing_block_device(dataset_id, path):
             if isinstance(path, FilePath) and path.isBlockDevice():
@@ -1253,77 +1304,66 @@ class BlockDeviceDeployer(PRecord):
             ).write(_logger)
             return False
 
-        # Find the devices for any manifestations on this node.  Build up a
-        # collection of non-manifest dataset as well.  Anything that looks like
-        # it could be a manifestation on this node but that has some kind of
-        # inconsistent state is left out altogether.
         devices = {}
         for volume in volumes:
             dataset_id = volume.dataset_id
-            u_dataset_id = unicode(dataset_id)
             if volume.attached_to == compute_instance_id:
                 device_path = api.get_device_path(volume.blockdevice_id)
                 if is_existing_block_device(dataset_id, device_path):
                     devices[dataset_id] = device_path
-                    manifestations[u_dataset_id] = _manifestation_from_volume(
-                        volume
-                    )
-            elif volume.attached_to is None:
-                # XXX: Looks like we don't attempt to report the size
-                # of non-manifest datasets.
-                # Why not? The size is available from the volume.
-                # https://clusterhq.atlassian.net/browse/FLOC-1983
-                nonmanifest[u_dataset_id] = Dataset(dataset_id=dataset_id)
 
         system_mounts = self._get_system_mounts(volumes, compute_instance_id)
 
-        paths = {}
-        for manifestation in manifestations.values():
-            dataset_id = manifestation.dataset.dataset_id
-            mountpath = self._mountpath_for_manifestation(manifestation)
+        return {
+            'compute_instance_id': compute_instance_id,
+            'volumes': volumes,
+            'devices': devices,
+            'system_mounts': system_mounts,
+        }
 
-            # If the expected mount point doesn't actually have the device
-            # mounted where we expected to find this manifestation, the
-            # manifestation doesn't really exist here.
-            properly_mounted = system_mounts.get(mountpath) == UUID(dataset_id)
+    def discover_state(self, node_state):
+        """
+        Find all block devices that are currently associated with this host and
+        return a ``NodeState`` containing only ``Manifestation`` instances and
+        their mount paths.
+        """
+        # FLOC-1819 Make this asynchronous
+        raw_state = self._discover_raw_state()
 
-            # In the future it would be nice to be able to represent
-            # intermediate states (at least internally, if not exposed via the
-            # API).  This makes certain IStateChange implementations easier
-            # (for example, we could know something is attached and has a
-            # filesystem, so we can just mount it - instead of doing something
-            # about those first two state changes like trying them and handling
-            # failure or doing more system inspection to try to see what's up).
-            # But ... the future.
-
-            if properly_mounted:
-                paths[dataset_id] = mountpath
+        datasets = {}
+        for volume in raw_state['volumes']:
+            dataset_id = volume.dataset_id
+            if dataset_id in raw_state['devices']:
+                device_path = raw_state['devices'][dataset_id]
+                if device_path in raw_state['system_mounts']:
+                    datasets[dataset_id] = xDataset(
+                        state=DatasetStates.MOUNTED,
+                        dataset_id=dataset_id,
+                        maximum_size=volume.size,
+                        blockdevice_id=volume.blockdevice_id,
+                        device_path=device_path,
+                        mount_point=raw_state['system_mounts'][device_path],
+                    )
+                else:
+                    datasets[dataset_id] = xDataset(
+                        state=DatasetStates.ATTACHED,
+                        dataset_id=dataset_id,
+                        maximum_size=volume.size,
+                        blockdevice_id=volume.blockdevice_id,
+                        device_path=device_path,
+                    )
             else:
-                del manifestations[dataset_id]
-                # FLOC-1806 Populate the Dataset's size information from the
-                # volume object.
-                # XXX: Here again, it we mark the dataset as
-                # `nonmanifest`` unless it's actually mounted but we
-                # don't attempt to report the size.
-                # Why not? The size is available from the volume.
-                # It seems like state reporting bug and separate from
-                # (although blocking) IDEA-22.
-                # https://clusterhq.atlassian.net/browse/FLOC-1983
-                nonmanifest[dataset_id] = Dataset(dataset_id=dataset_id)
+                datasets[dataset_id] = xDataset(
+                    state=DatasetStates.NON_MANIFEST,
+                    dataset_id=dataset_id,
+                    maximum_size=volume.size,
+                    blockdevice_id=volume.blockdevice_id,
+                )
 
         local_state = BlockDeviceDeployerLocalState(
-            node_state=NodeState(
-                uuid=self.node_uuid,
-                hostname=self.hostname,
-                manifestations=manifestations,
-                paths=paths,
-                devices=devices,
-                # Discovering these is ApplicationNodeDeployer's job, we
-                # don't know anything about these:
-                applications=None,
-            ),
-            nonmanifest_datasets=NonManifestDatasets(datasets=nonmanifest),
-            volumes=volumes,
+            uuid=self.node_uuid,
+            hostname=self.hostname,
+            datasets=datasets,
         )
 
         return succeed(local_state)
