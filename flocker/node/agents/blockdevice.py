@@ -1387,7 +1387,7 @@ class BlockDeviceDeployer(PRecord):
                 )
 
         local_state = BlockDeviceDeployerLocalState(
-            uuid=self.node_uuid,
+            node_uuid=self.node_uuid,
             hostname=self.hostname,
             datasets=datasets,
         )
