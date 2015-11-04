@@ -1338,7 +1338,7 @@ class BlockDeviceDeployer(PRecord):
                 if is_existing_block_device(dataset_id, device_path):
                     devices[dataset_id] = device_path
 
-        system_mounts = self._get_system_mounts(volumes, compute_instance_id)
+        system_mounts = self._get_system_mounts()
 
         return {
             'compute_instance_id': compute_instance_id,
