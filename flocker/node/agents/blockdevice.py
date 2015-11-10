@@ -122,6 +122,44 @@ class DiscoveredDataset(PClass):
         return (True, "")
 
 
+class DesiredDataset(PClass):
+    """
+    Dataset as requested by configuration (and applications).
+    """
+    state = field(
+        invariant=lambda state: (state in DatasetStates.iterconstants(),
+                                 "Not a valid state"),
+        mandatory=True,
+    )
+    dataset_id = field(type=UUID, mandatory=True)
+    maximum_size = field(type=int)
+
+    def __invariant__(self):
+        expected_attributes = [
+            ((DatasetStates.NON_MANIFEST, DatasetStates.MOUNTED),
+             "maximum_size"),
+        ]
+        for states, attribute in expected_attributes:
+            if (self.state in states) != hasattr(self, attribute):
+                if self.state in states:
+                    message = (
+                        "`{attr}` must be specified in state `{state}`"
+                        .format(attribute=attribute, state=self.state.name)
+                    )
+                else:
+                    message = (
+                        "`{attr}` can only be specified in states {states}"
+                        .format(
+                            attr=attribute,
+                            states=','.join(map("`{0.name}`".format, states)),
+                        )
+                    )
+                return (False, message)
+        if self.state in (DatasetStates.ATTACHED,):
+            return (False, "DesiredDataset can't be in state ATTACHED.")
+        return (True, "")
+
+
 class VolumeException(Exception):
     """
     A base class for exceptions raised by  ``IBlockDeviceAPI`` operations.
@@ -1441,6 +1479,52 @@ class BlockDeviceDeployer(PRecord):
         :returns: A ``FilePath`` of the mount point.
         """
         return self.mountroot.child(dataset_id.encode("ascii"))
+
+    def _calculate_desired_state(
+        self, configuration, local_applications, local_datasets
+    ):
+        not_in_use = NotInUseDatasets(
+            node_uuid=self.node_uuid,
+            applications=local_applications,
+            leases=configuration.leases,
+        )
+
+        this_node_config = configuration.get_node(
+            self.node_uuid, hostname=self.hostname)
+
+        desired_datasets = {}
+        for manifestation in this_node_config.manifestations.values():
+            dataset_id = UUID(manifestation.dataset.dataset_id)
+            if manifestation.dataset.deleted is True:
+                desired_datasets[dataset_id] = DesiredDataset(
+                    state=DatasetStates.DELETED,
+                    dataset_id=dataset_id,
+                )
+            else:
+                desired_datasets[dataset_id] = DesiredDataset(
+                    state=DatasetStates.MOUNTED,
+                    dataset_id=dataset_id,
+                    maximum_size=manifestation.dataset.maximum_size,
+                )
+
+        not_in_use_datasets = not_in_use(local_datasets.values())
+        for dataset_id, dataset in local_datasets.items():
+            if dataset in not_in_use_datasets:
+                continue
+            if dataset.state not in (
+                DatasetStates.ATTACHED, DatasetStates.MOUNTED
+            ):
+                # A lease doesn't force a mount.
+                continue
+            # This may override something from above, if there is a
+            # lease or application using a dataset.
+            desired_datasets[dataset_id] = DesiredDataset(
+                dataset_id=dataset_id,
+                state=DatasetStates.MOUNTED,
+                maximum_size=dataset.maximum_size,
+            )
+
+        return desired_datasets
 
     def calculate_changes(self, configuration, cluster_state, local_state):
         this_node_config = configuration.get_node(
