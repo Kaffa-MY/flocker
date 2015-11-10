@@ -298,7 +298,7 @@ class BlockDeviceDeployerLocalStateTests(SynchronousTestCase):
         """
         ``shared_state_changes`` returns a ``NodeState`` with
         the ``node_uuid`` and ``hostname`` from the
-        BlockDeviceDeployerLocalState`` and a
+        ``BlockDeviceDeployerLocalState`` and a
         ``NonManifestDatasets``.
         """
         local_state = BlockDeviceDeployerLocalState(
@@ -1097,7 +1097,7 @@ class FakeBlockDeviceDeployerLocalState(PClass):
 
 class FakeBlockDeviceDeployerLocalStateTests(SynchronousTestCase):
     """
-    Tests for ``BlockDeviceDeployerLocalState``.
+    Tests for ``FakeBlockDeviceDeployerLocalState``.
     """
     def setUp(self):
         self.node_uuid = uuid4()
@@ -1105,8 +1105,8 @@ class FakeBlockDeviceDeployerLocalStateTests(SynchronousTestCase):
 
     def test_provides_ilocalstate(self):
         """
-        Verify that ``BlockDeviceDeployerLocalState`` instances provide the
-        ILocalState interface.
+        Verify that ``FakeBlockDeviceDeployerLocalState`` instances
+        provide the ILocalState interface.
         """
         local_state = FakeBlockDeviceDeployerLocalState(
             node_state=EMPTY_NODE_STATE,
@@ -1121,7 +1121,7 @@ class FakeBlockDeviceDeployerLocalStateTests(SynchronousTestCase):
         """
         ``shared_state_changes`` returns a ``NodeState`` with
         the ``node_uuid`` and ``hostname`` from the
-        BlockDeviceDeployerLocalState`` and a
+        ``FakeBlockDeviceDeployerLocalState`` and a
         ``NonManifestDatasets``.
         """
         local_state = FakeBlockDeviceDeployerLocalState(
