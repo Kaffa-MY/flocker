@@ -62,6 +62,8 @@ class DatasetStates(Names):
     """
     States that a ``Dataset`` can be in.
     """
+    NON_EXISTANT = NamedConstant()
+    ATTACHED_ELSEWHERE = NamedConstant()
     NON_MANIFEST = NamedConstant()
     ATTACHED = NamedConstant()
     MOUNTED = NamedConstant()
@@ -117,7 +119,7 @@ class DiscoveredDataset(PClass):
                         )
                     )
                 return (False, message)
-        if self.state in (DatasetStates.DELETED,):
+        if self.state in (DatasetStates.DELETED, DatasetStates.NON_EXISTANT):
             return (False, "DesiredDataset can't be in state DELETED.")
         return (True, "")
 
@@ -160,7 +162,10 @@ class DesiredDataset(PClass):
                         )
                     )
                 return (False, message)
-        if self.state in (DatasetStates.ATTACHED,):
+        if self.state in (
+            DatasetStates.ATTACHED, DatasetStates.NON_EXISTANT,
+            DatasetStates.ATTACHED_ELSEWHERE,
+        ):
             return (False, "DesiredDataset can't be in state ATTACHED.")
         return (True, "")
 
@@ -1448,6 +1453,13 @@ class BlockDeviceDeployer(PRecord):
                     # blockdevice doesn't exist yet.
                     datasets[dataset_id] = DiscoveredDataset(
                         state=DatasetStates.NON_MANIFEST,
+                        dataset_id=dataset_id,
+                        maximum_size=volume.size,
+                        blockdevice_id=volume.blockdevice_id,
+                    )
+                else:
+                    datasets[dataset_id] = DiscoveredDataset(
+                        state=DatasetStates.ATTACHED_ELSEWHERE,
                         dataset_id=dataset_id,
                         maximum_size=volume.size,
                         blockdevice_id=volume.blockdevice_id,
