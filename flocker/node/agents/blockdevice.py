@@ -106,7 +106,7 @@ class DiscoveredDataset(PClass):
                 if self.state in states:
                     message = (
                         "`{attr}` must be specified in state `{state}`"
-                        .format(attribute=attribute, state=self.state.name)
+                        .format(attr=attribute, state=self.state.name)
                     )
                 else:
                     message = (
@@ -144,7 +144,7 @@ class DesiredDataset(PClass):
                 if self.state in states:
                     message = (
                         "`{attr}` must be specified in state `{state}`"
-                        .format(attribute=attribute, state=self.state.name)
+                        .format(attr=attribute, state=self.state.name)
                     )
                 else:
                     message = (
