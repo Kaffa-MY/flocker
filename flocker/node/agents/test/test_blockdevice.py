@@ -1281,6 +1281,9 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    mount_point=FilePath('/flocker/').child(
+                        unicode(self.DATASET_ID)
+                    ),
                 ),
             ],
         )
@@ -1329,6 +1332,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    mount_point=FilePath('/mount/path'),
                 ),
             ],
             leases=Leases().acquire(
@@ -1361,6 +1365,9 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    mount_point=FilePath('/flocker/').child(
+                        unicode(self.DATASET_ID)
+                    ),
                 ),
             ],
             leases=Leases().acquire(
@@ -1429,6 +1436,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    mount_point=FilePath('/mount/path'),
                 ),
             ],
         )
@@ -1458,6 +1466,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
+                    mount_point=FilePath('/mount/path'),
                 ),
             ],
             leases=Leases().acquire(
@@ -1495,6 +1504,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
                     state=DatasetStates.MOUNTED,
                     dataset_id=self.DATASET_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
+                    mount_point=FilePath('/mount/path'),
                 ),
             ],
             leases=Leases().acquire(

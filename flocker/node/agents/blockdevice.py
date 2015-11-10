@@ -133,11 +133,16 @@ class DesiredDataset(PClass):
     )
     dataset_id = field(type=UUID, mandatory=True)
     maximum_size = field(type=int)
+    mount_point = field(FilePath)
 
     def __invariant__(self):
         expected_attributes = [
             ((DatasetStates.NON_MANIFEST, DatasetStates.MOUNTED),
              "maximum_size"),
+        ]
+        expected_attributes = [
+            ((DatasetStates.MOUNTED,),
+             "mount_point"),
         ]
         for states, attribute in expected_attributes:
             if (self.state in states) != hasattr(self, attribute):
@@ -1505,6 +1510,7 @@ class BlockDeviceDeployer(PRecord):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=manifestation.dataset.maximum_size,
+                    mount_point=self._mountpath_for_dataset_id(dataset_id),
                 )
 
         not_in_use_datasets = not_in_use(local_datasets.values())
