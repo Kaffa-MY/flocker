@@ -1522,7 +1522,9 @@ class BlockDeviceDeployer(PRecord):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=manifestation.dataset.maximum_size,
-                    mount_point=self._mountpath_for_dataset_id(dataset_id),
+                    mount_point=self._mountpath_for_dataset_id(
+                        unicode(dataset_id)
+                    ),
                 )
 
         not_in_use_datasets = not_in_use(local_datasets.values())
@@ -1540,6 +1542,10 @@ class BlockDeviceDeployer(PRecord):
                 dataset_id=dataset_id,
                 state=DatasetStates.MOUNTED,
                 maximum_size=dataset.maximum_size,
+                # XXX What to do in the ATTACHED state.
+                mount_point=self._mountpath_for_dataset_id(
+                    unicode(dataset_id)
+                ),
             )
 
         return desired_datasets
