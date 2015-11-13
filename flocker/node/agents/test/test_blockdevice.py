@@ -1249,7 +1249,7 @@ def assert_desired_datasets(
     )
 
 
-class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
+class CalculateDesiredStateTests(SynchronousTestCase):
     """
     Tests for ``BlockDeviceDeployer._calculate_desired_state``.
     """
@@ -1286,10 +1286,10 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)
+                        unicode(ScenarioMixin.DATASET_ID)
                     ),
                 ),
             ],
@@ -1310,7 +1310,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.DELETED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                 ),
             ],
         )
@@ -1326,8 +1326,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             desired_manifestations=[],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.MOUNTED,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1337,16 +1337,16 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)
+                        unicode(ScenarioMixin.DATASET_ID)
                     ),
                 ),
             ],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=self.deployer.node_uuid,
             )
         )
@@ -1362,8 +1362,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             desired_manifestations=[],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.ATTACHED,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1372,16 +1372,16 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)
+                        unicode(ScenarioMixin.DATASET_ID)
                     ),
                 ),
             ],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=self.deployer.node_uuid,
             )
         )
@@ -1397,8 +1397,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             desired_manifestations=[],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.NON_MANIFEST,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                 )
@@ -1406,7 +1406,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=self.deployer.node_uuid,
             )
         )
@@ -1421,8 +1421,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             self, self.deployer,
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.MOUNTED,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1432,7 +1432,7 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=uuid4(),
             )
         )
@@ -1448,8 +1448,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             desired_manifestations=[],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.MOUNTED,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1469,10 +1469,10 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)),
+                        unicode(ScenarioMixin.DATASET_ID)),
                 ),
             ],
         )
@@ -1489,8 +1489,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             desired_manifestations=[ScenarioMixin.MANIFESTATION],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.MOUNTED,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1500,15 +1500,15 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)),
+                        unicode(ScenarioMixin.DATASET_ID)),
                 ),
             ],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=self.deployer.node_uuid,
             )
         )
@@ -1528,8 +1528,8 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             ],
             local_datasets=[
                 DiscoveredDataset(
-                    dataset_id=self.DATASET_ID,
-                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    blockdevice_id=ScenarioMixin.BLOCKDEVICE_ID,
                     state=DatasetStates.MOUNTED,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
@@ -1539,15 +1539,15 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             expected_datasets=[
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
-                    dataset_id=self.DATASET_ID,
+                    dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     mount_point=self.deployer.mountroot.child(
-                        unicode(self.DATASET_ID)),
+                        unicode(ScenarioMixin.DATASET_ID)),
                 ),
             ],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
-                dataset_id=self.DATASET_ID,
+                dataset_id=ScenarioMixin.DATASET_ID,
                 node_id=self.deployer.node_uuid,
             )
         )
