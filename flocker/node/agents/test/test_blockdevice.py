@@ -1286,8 +1286,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
         If there is a manfestation on this node that is deleted,
         the corresponding dataset has a desired state of ``MOUNTED``.
 
-        This is only necessary until we can delete non-manifest datasets
-        (FLOC-1172).
+        This is only necessary until we can delete non-manifest datasets.
         """
         assert_desired_datasets(
             self, self.deployer,
@@ -1996,12 +1995,11 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
         )
 
 
-class BlockDeviceDeployerIgnorantCalculateChangesTests(
+class BlockDeviceDeployerCalculateChangesTests(
         SynchronousTestCase, ScenarioMixin
 ):
     """
-    Tests for the cases of ``BlockDeviceDeployer.calculate_changes`` where no
-    changes can be calculated because application state is unknown.
+    Tests for ``BlockDeviceDeployer.calculate_changes``.
     """
     def setUp(self):
         self.expected_change = ControllableAction(
