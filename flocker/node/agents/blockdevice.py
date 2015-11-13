@@ -1517,6 +1517,11 @@ class BlockDeviceDeployer(PRecord):
         desired_datasets = {}
         for manifestation in this_node_config.manifestations.values():
             dataset_id = UUID(manifestation.dataset.dataset_id)
+            # XXX: Make this configurable. FLOC-2679
+            maximum_size = manifestation.dataset.maximum_size
+            if maximum_size is None:
+                maximum_size = DEFAULT_DATASET_SIZE
+
             if manifestation.dataset.deleted is True:
                 desired_datasets[dataset_id] = DesiredDataset(
                     state=DatasetStates.DELETED,
@@ -1528,7 +1533,7 @@ class BlockDeviceDeployer(PRecord):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     metadata=manifestation.dataset.metadata,
-                    maximum_size=manifestation.dataset.maximum_size,
+                    maximum_size=maximum_size,
                     mount_point=self._mountpath_for_dataset_id(
                         unicode(dataset_id)
                     ),

@@ -1299,6 +1299,32 @@ class CalculateDesiredStateTests(SynchronousTestCase):
             ],
         )
 
+    def test_manifestation_default_size(self):
+        """
+        If there is a manifesation on this node, then the
+        corresponding dataset has a desired state of ``MOUNTED``.
+        """
+        expected_size = int(GiB(100).to_Byte().value)
+        assert_desired_datasets(
+            self, self.deployer,
+            desired_manifestations=[
+                ScenarioMixin.MANIFESTATION.transform(
+                    ["dataset", "maximum_size"], lambda _: None
+                ),
+            ],
+            expected_datasets=[
+                DesiredDataset(
+                    state=DatasetStates.MOUNTED,
+                    dataset_id=ScenarioMixin.DATASET_ID,
+                    metadata=ScenarioMixin.METADATA,
+                    maximum_size=expected_size,
+                    mount_point=self.deployer.mountroot.child(
+                        unicode(ScenarioMixin.DATASET_ID)
+                    ),
+                ),
+            ],
+        )
+
     def test_deleted_manifestation(self):
         """
         If there is a manfestation on this node that is deleted,
