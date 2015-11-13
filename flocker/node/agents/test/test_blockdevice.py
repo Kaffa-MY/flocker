@@ -961,10 +961,13 @@ class ScenarioMixin(object):
     NODE = u"192.0.2.1"
     NODE_UUID = uuid4()
 
+    METADATA = {u"I'm so meta": u"even this acronym"}
+
     MANIFESTATION = Manifestation(
         dataset=Dataset(
             dataset_id=unicode(DATASET_ID),
             maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+            metadata=METADATA,
         ),
         primary=True,
     )
@@ -1287,6 +1290,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
                     dataset_id=ScenarioMixin.DATASET_ID,
+                    metadata=ScenarioMixin.METADATA,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
                         unicode(ScenarioMixin.DATASET_ID)
@@ -1311,6 +1315,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                 DesiredDataset(
                     state=DatasetStates.DELETED,
                     dataset_id=ScenarioMixin.DATASET_ID,
+                    metadata=ScenarioMixin.METADATA,
                 ),
             ],
         )
@@ -1339,6 +1344,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    metadata={},
                     mount_point=self.deployer.mountroot.child(
                         unicode(ScenarioMixin.DATASET_ID)
                     ),
@@ -1374,6 +1380,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=ScenarioMixin.DATASET_ID,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
+                    metadata={},
                     mount_point=self.deployer.mountroot.child(
                         unicode(ScenarioMixin.DATASET_ID)
                     ),
@@ -1470,6 +1477,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                 DesiredDataset(
                     state=DatasetStates.MOUNTED,
                     dataset_id=ScenarioMixin.DATASET_ID,
+                    metadata={},
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     mount_point=self.deployer.mountroot.child(
                         unicode(ScenarioMixin.DATASET_ID)),

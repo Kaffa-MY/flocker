@@ -136,6 +136,10 @@ class DesiredDataset(PClass):
     )
     dataset_id = field(type=UUID, mandatory=True)
     maximum_size = field(type=int)
+    metadata = pmap_field(
+        key_type=unicode,
+        value_type=unicode,
+    )
     mount_point = field(FilePath)
 
     def __invariant__(self):
@@ -1517,11 +1521,13 @@ class BlockDeviceDeployer(PRecord):
                 desired_datasets[dataset_id] = DesiredDataset(
                     state=DatasetStates.DELETED,
                     dataset_id=dataset_id,
+                    metadata=manifestation.dataset.metadata,
                 )
             else:
                 desired_datasets[dataset_id] = DesiredDataset(
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
+                    metadata=manifestation.dataset.metadata,
                     maximum_size=manifestation.dataset.maximum_size,
                     mount_point=self._mountpath_for_dataset_id(
                         unicode(dataset_id)
@@ -1543,6 +1549,8 @@ class BlockDeviceDeployer(PRecord):
                 dataset_id=dataset_id,
                 state=DatasetStates.MOUNTED,
                 maximum_size=dataset.maximum_size,
+                # XXX ?
+                metadata={},
                 # XXX What to do in the ATTACHED state.
                 mount_point=self._mountpath_for_dataset_id(
                     unicode(dataset_id)
