@@ -1079,6 +1079,11 @@ class RecordingCalculater(object):
         return self.expected_changes
 
 
+class CalculaterTests(SynchronousTestCase):
+    def test_not_implemented_yet(self):
+        self.fail("ICalculater implementations need to be verified.")
+
+
 def assert_desired_datasets(
     case,
     deployer,
@@ -2013,6 +2018,30 @@ class BlockDeviceDeployerIgnorantCalculateChangesTests(
             hostname=ScenarioMixin.NODE,
             datasets={},
             volumes={},
+        )
+
+    def test_calculates_changes(self):
+        """
+        ``BlockDeviceDeployer.calculate_changes`` returns the changes
+        calculated by calling the provided ``ICalculater``.
+        """
+        # We're ignorant about application state:
+        node_state = NodeState(
+            hostname=ScenarioMixin.NODE,
+            uuid=ScenarioMixin.NODE_UUID,
+            applications=[],
+        )
+        node_config = to_node(node_state)
+
+        return assert_calculated_changes_for_deployer(
+            self, self.deployer,
+            node_state=node_state,
+            node_config=node_config,
+            nonmanifest_datasets=[],
+            additional_node_states=set(),
+            additional_node_config=set(),
+            expected_changes=self.expected_change,
+            local_state=self.local_state,
         )
 
     def test_unknown_applications(self):
