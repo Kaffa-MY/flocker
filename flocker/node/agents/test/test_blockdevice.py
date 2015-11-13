@@ -1411,6 +1411,32 @@ class CalculateDesiredStateTests(SynchronousTestCase, ScenarioMixin):
             )
         )
 
+    def test_lease_elsewhere(self):
+        """
+        If there is a lease for a dataset on another node,
+        there isn't a corresponding dataset that has a desired state
+        of ``MOUNTED``.
+        """
+        assert_desired_datasets(
+            self, self.deployer,
+            local_datasets=[
+                DiscoveredDataset(
+                    dataset_id=self.DATASET_ID,
+                    blockdevice_id=self.BLOCKDEVICE_ID,
+                    state=DatasetStates.MOUNTED,
+                    maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
+                    device_path=FilePath('/dev/xvdf'),
+                    mount_point=FilePath('/mount/path'),
+                )
+            ],
+            expected_datasets=[],
+            leases=Leases().acquire(
+                now=datetime.now(tz=UTC),
+                dataset_id=self.DATASET_ID,
+                node_id=uuid4(),
+            )
+        )
+
     def test_application_mounted_manifestaion(self):
         """
         If there is an application with attached volume, there is a
