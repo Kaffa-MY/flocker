@@ -89,6 +89,7 @@ class DiscoveredDataset(PClass):
         mandatory=True,
     )
     dataset_id = field(type=UUID, mandatory=True)
+    # XXX int or *None*
     maximum_size = field(type=int, mandatory=True)
     blockdevice_id = field(type=unicode, mandatory=True)
     device_path = field(FilePath)
