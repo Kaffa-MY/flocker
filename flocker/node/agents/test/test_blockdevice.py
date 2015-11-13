@@ -1635,7 +1635,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
     def test_MOUNTED_MOUNTED_does_nothing(self):
         """
         If a volume is currently ``MOUNTED`` and the desired state is
-        ``MOUNTED``, then the expected change is a noop.
+        ``MOUNTED``, then the expected change is to do nothing.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -1687,7 +1687,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
     def test_NON_MANIFEST_NON_MANIFEST_does_nothing(self):
         """
         If a volume is currently ``NON_MANIFEST`` and the desired state is
-        ``NON_MANIFEST``, then the expected change is a noop.
+        ``NON_MANIFEST``, then the expected change is to do nothing.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -1814,12 +1814,10 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
             expected_changes=NoOp(),
         )
 
-    def test_NON_MANIFEST_DELETED_deletes_volume(self):
+    def test_NON_MANIFEST_DELETED_does_nothing(self):
         """
         If a volume is currently ``NON_MANIFEST`` and the desired state is
-        ``NON_MANIFEST``, then the expected change is a noop.
-
-        XXX duplicate deletes
+        ``DELETED``, then the expected change is to do nothing.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -1838,17 +1836,13 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     dataset_id=dataset_id,
                 ),
             ],
-            expected_changes=in_parallel([
-                DestroyVolume(
-                    blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
-                ),
-            ])
+            expected_changes=NoOp(),
         )
 
-    def test_ATTACHED_DELETED_detaches(self):
+    def test_ATTACHED_DELETED_mounts(self):
         """
         If a volume is currently ``ATTACHED`` and the desired state is
-        ``DELETED``, then the expected change is to detach the volume.
+        ``DELETED``, then the expected change is to do nothing.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -1868,18 +1862,13 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     dataset_id=dataset_id,
                 ),
             ],
-            expected_changes=in_parallel([
-                DetachVolume(
-                    dataset_id=dataset_id,
-                    blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
-                ),
-            ])
+            expected_changes=NoOp(),
         )
 
-    def test_MOUNTED_DELETED_unmounts(self):
+    def test_MOUNTED_DELETED_destroys(self):
         """
         If a volume is currently ``MOUNTED`` and the desired state is
-        ``DELETED``, then the expected change is to unmount the volume.
+        ``DELETED``, then the expected change is to destroy the volume.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -1902,7 +1891,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                 ),
             ],
             expected_changes=in_parallel([
-                UnmountBlockDevice(
+                DestroyBlockDeviceDataset(
                     dataset_id=dataset_id,
                     blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
                 )

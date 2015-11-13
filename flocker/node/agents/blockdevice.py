@@ -496,6 +496,13 @@ class DestroyBlockDeviceDataset(PRecord):
     dataset_id = field(type=UUID, mandatory=True)
     blockdevice_id = field(type=unicode, mandatory=True)
 
+    @classmethod
+    def from_dataset(cls, discovered_dataset, desired_dataset):
+        return cls(
+            dataset_id=desired_dataset.dataset_id,
+            blockdevice_id=discovered_dataset.blockdevice_id,
+        )
+
     # This can be replaced with a regular attribute when the `_logger` argument
     # is no longer required by Eliot.
     @property
@@ -1392,9 +1399,9 @@ DATASET_TRANSITIONS = {
     },
     DatasetStates.DELETED: {
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
-        DatasetStates.NON_MANIFEST: DestroyVolume.from_dataset,
-        DatasetStates.ATTACHED: DetachVolume.from_dataset,
-        DatasetStates.MOUNTED: UnmountBlockDevice.from_dataset,
+        DatasetStates.NON_MANIFEST: lambda **kwargs: NoOp(),
+        DatasetStates.ATTACHED: lambda **kwargs: NoOp(),
+        DatasetStates.MOUNTED: DestroyBlockDeviceDataset.from_dataset,
     },
 }
 
