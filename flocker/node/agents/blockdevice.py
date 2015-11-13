@@ -1646,7 +1646,12 @@ class BlockDeviceDeployer(PRecord):
             if maximum_size is None:
                 maximum_size = DEFAULT_DATASET_SIZE
 
-            if manifestation.dataset.deleted is True:
+            if (
+                manifestation.dataset.deleted is True
+                # XXX FLOC-1772
+                and dataset_id in local_datasets
+                and local_datasets[dataset_id].state == DatasetStates.MOUNTED
+            ):
                 desired_datasets[dataset_id] = DesiredDataset(
                     state=DatasetStates.DELETED,
                     dataset_id=dataset_id,
