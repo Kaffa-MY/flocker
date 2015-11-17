@@ -1087,13 +1087,32 @@ class CalculaterTests(SynchronousTestCase):
 def assert_desired_datasets(
     case,
     deployer,
-    desired_manifestations=[],
-    local_datasets=[],
-    local_applications=[],
+    desired_manifestations=(),
+    local_datasets=(),
+    local_applications=(),
     additional_node_config=set(),
-    expected_datasets=[],
+    expected_datasets=(),
     leases=Leases(),
 ):
+    """
+    Assert that ``calculate_changes`` calculates the given desired datasetsg
+    invoked with the given state and configuration.
+
+    :param TestCase test_case: The ``TestCase`` which is being run.
+    :param BlockDeviceDeployer deployer: The deployer that will be asked to
+        calculate the desired datasets.
+    :param desired_manifeations: Manifestations to include in the local nodes
+        configuration.
+    :type desired_manifestations: iterable of ``Manifestations``
+    :param local_datasets: Datasets to include in the local node's state.
+    :type local_datasets: iterable of ``DiscoveredDataset``s
+    :param local_applications: Location to include in the local node's state.
+    :type local_applications: iterable of ``Application``s
+    :param additonal_node_config: Additional nodes to include in the cluster
+        configration.
+    :type additional_node_config: ``set`` of ``Node``s
+    :param Leases leases: Leases to include in the cluster configration.
+    """
     calculater = RecordingCalculater(NoOp())
     deployer = deployer.set(calculater=calculater)
     cluster_configuration = Deployment(
