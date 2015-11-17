@@ -519,7 +519,7 @@ class DestroyBlockDeviceDataset(PRecord):
     blockdevice_id = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset_id=desired_dataset.dataset_id,
             blockdevice_id=discovered_dataset.blockdevice_id,
@@ -561,7 +561,7 @@ class CreateFilesystem(PRecord):
     filesystem = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             device=discovered_dataset.device_path,
             filesystem=desired_dataset.filesystem,
@@ -661,7 +661,7 @@ class MountBlockDevice(PRecord):
     mountpoint = field(type=FilePath, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset_id=desired_dataset.dataset_id,
             blockdevice_id=discovered_dataset.blockdevice_id,
@@ -732,7 +732,7 @@ class UnmountBlockDevice(PRecord):
     blockdevice_id = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset_id=discovered_dataset.dataset_id,
             blockdevice_id=discovered_dataset.blockdevice_id,
@@ -777,7 +777,7 @@ class AttachVolume(PRecord):
     blockdevice_id = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset_id=discovered_dataset.dataset_id,
             blockdevice_id=discovered_dataset.blockdevice_id,
@@ -845,7 +845,7 @@ class DetachVolume(PRecord):
     blockdevice_id = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset_id=discovered_dataset.dataset_id,
             blockdevice_id=discovered_dataset.blockdevice_id,
@@ -875,7 +875,7 @@ class DestroyVolume(PRecord):
     blockdevice_id = field(type=unicode, mandatory=True)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             blockdevice_id=discovered_dataset.blockdevice_id,
         )
@@ -932,7 +932,7 @@ class CreateBlockDeviceDataset(PRecord):
     mountpoint = field(mandatory=True, type=FilePath)
 
     @classmethod
-    def from_dataset(cls, discovered_dataset, desired_dataset):
+    def from_state_and_config(cls, discovered_dataset, desired_dataset):
         return cls(
             dataset=Dataset(
                 dataset_id=desired_dataset.dataset_id,
@@ -1451,29 +1451,36 @@ class BlockDeviceDeployerLocalState(PClass):
 # Mapping from desired and discovered dataset state to
 # IStateChange factory. (The factory is expected to take
 # ``desired_dataset`` and ``discovered_dataset``.
+Desired = Discovered = DatasetStates
+DO_NOTHING = lambda **kwargs: NoOp()
 DATASET_TRANSITIONS = {
-    DatasetStates.MOUNTED: {
-        DatasetStates.NON_EXISTENT: CreateBlockDeviceDataset.from_dataset,
-        DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
-        DatasetStates.ATTACHED_NO_FILESYSTEM: CreateFilesystem.from_dataset,
-        DatasetStates.NON_MANIFEST: AttachVolume.from_dataset,
-        DatasetStates.ATTACHED: MountBlockDevice.from_dataset,
+    Desired.MOUNTED: {
+        Discovered.NON_EXISTENT:
+            CreateBlockDeviceDataset.from_state_and_config,
+        Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
+        Discovered.ATTACHED_NO_FILESYSTEM:
+            CreateFilesystem.from_state_and_config,
+        Discovered.NON_MANIFEST: AttachVolume.from_state_and_config,
+        DatasetStates.ATTACHED: MountBlockDevice.from_state_and_config,
     },
-    DatasetStates.NON_MANIFEST: {
-        DatasetStates.NON_EXISTENT: lambda **kwargs: NoOp(),
-        DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
-        DatasetStates.ATTACHED_NO_FILESYSTEM: DetachVolume.from_dataset,
-        DatasetStates.ATTACHED: DetachVolume.from_dataset,
-        DatasetStates.MOUNTED: UnmountBlockDevice.from_dataset,
+    Desired.NON_MANIFEST: {
+        Discovered.NON_EXISTENT: DO_NOTHING,
+        Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
+        Discovered.ATTACHED_NO_FILESYSTEM:
+            DetachVolume.from_state_and_config,
+        Discovered.ATTACHED: DetachVolume.from_state_and_config,
+        Discovered.MOUNTED: UnmountBlockDevice.from_state_and_config,
     },
-    DatasetStates.DELETED: {
-        DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
-        DatasetStates.NON_MANIFEST: lambda **kwargs: NoOp(),
-        DatasetStates.ATTACHED_NO_FILESYSTEM: DetachVolume.from_dataset,
-        DatasetStates.ATTACHED: lambda **kwargs: NoOp(),
-        DatasetStates.MOUNTED: DestroyBlockDeviceDataset.from_dataset,
+    Desired.DELETED: {
+        Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
+        Discovered.NON_MANIFEST: DO_NOTHING,
+        Discovered.ATTACHED_NO_FILESYSTEM:
+            DetachVolume.from_state_and_config,
+        Discovered.ATTACHED: DO_NOTHING,
+        Discovered.MOUNTED: DestroyBlockDeviceDataset.from_state_and_config,
     },
 }
+del Desired, Discovered, DO_NOTHING
 
 
 @implementer(ICalculater)
