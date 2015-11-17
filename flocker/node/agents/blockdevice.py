@@ -1670,6 +1670,13 @@ class BlockDeviceDeployer(PRecord):
                     ),
                 )
 
+        # If we don't have a given dataset, we default it to `NON_MANIFEST` in
+        # BlockDeviceCalculater.calculate_changes_for_datasets, so we don't try
+        # to find them here. We don't have explicit configuration for
+        # non-manifest datasets anyway. Datasets that should be
+        # `ATTACHED_ELSEWHERE` need the same behavior as `NON_MANIFEST`, so we
+        # don't check them either.
+
         not_in_use_datasets = not_in_use(local_datasets.values())
         for dataset_id, dataset in local_datasets.items():
             if dataset in not_in_use_datasets:
