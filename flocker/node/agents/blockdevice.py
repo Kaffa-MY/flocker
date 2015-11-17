@@ -877,7 +877,6 @@ class CreateBlockDeviceDataset(PRecord):
             dataset=Dataset(
                 dataset_id=desired_dataset.dataset_id,
                 maximum_size=desired_dataset.maximum_size,
-                primary=True,
             ),
             mountpoint=desired_dataset.mount_point,
         )
