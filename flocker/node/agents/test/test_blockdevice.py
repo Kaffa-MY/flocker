@@ -1455,9 +1455,8 @@ class CalculateDesiredStateTests(SynchronousTestCase):
 
     def test_leased_attached_manifestaion(self):
         """
-        If there is a lease for a mounted dataset present on node,
-        there is a corresponding dataset that has a desired state of
-        ``MOUNTED``.
+        If there is a lease for an attached dataset present on node,
+        there is not a corresponding desired dataset.
         """
         assert_desired_datasets(
             self, self.deployer,
@@ -1471,17 +1470,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
                     device_path=FilePath('/dev/xvdf'),
                 )
             ],
-            expected_datasets=[
-                DesiredDataset(
-                    state=DatasetStates.MOUNTED,
-                    dataset_id=ScenarioMixin.DATASET_ID,
-                    maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    metadata={},
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)
-                    ),
-                ),
-            ],
+            expected_datasets=[],
             leases=Leases().acquire(
                 now=datetime.now(tz=UTC),
                 dataset_id=ScenarioMixin.DATASET_ID,
