@@ -1457,6 +1457,7 @@ DATASET_TRANSITIONS = {
     Desired.MOUNTED: {
         Discovered.NON_EXISTENT:
             CreateBlockDeviceDataset.from_state_and_config,
+        # Other node will need to deatch first
         Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
         Discovered.ATTACHED_NO_FILESYSTEM:
             CreateFilesystem.from_state_and_config,
@@ -1464,7 +1465,9 @@ DATASET_TRANSITIONS = {
         DatasetStates.ATTACHED: MountBlockDevice.from_state_and_config,
     },
     Desired.NON_MANIFEST: {
+        # Can't create non-manifest datasets yet.
         Discovered.NON_EXISTENT: DO_NOTHING,
+        # Other node will deatch
         Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
         Discovered.ATTACHED_NO_FILESYSTEM:
             DetachVolume.from_state_and_config,
@@ -1472,11 +1475,14 @@ DATASET_TRANSITIONS = {
         Discovered.MOUNTED: UnmountBlockDevice.from_state_and_config,
     },
     Desired.DELETED: {
+        # Other node will destroy
         Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
+        # Can't pick node that will do destruction yet.
         Discovered.NON_MANIFEST: DO_NOTHING,
-        Discovered.ATTACHED_NO_FILESYSTEM:
-            DetachVolume.from_state_and_config,
-        Discovered.ATTACHED: DO_NOTHING,
+        # This state won't occur until FLOC-1772
+        Discovered.ATTACHED_NO_FILESYSTEM: DetachVolume.from_state_and_config,
+        # This state won't occur until FLOC-1772
+        Discovered.ATTACHED: DetachVolume.from_state_and_config,
         Discovered.MOUNTED: DestroyBlockDeviceDataset.from_state_and_config,
     },
 }
