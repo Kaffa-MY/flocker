@@ -1712,8 +1712,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             expected_changes=in_parallel([
@@ -1722,8 +1721,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                         dataset_id=dataset_id,
                         maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
                     ),
-                    mountpoint=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mountpoint=FilePath("/mount/point"),
                 ),
             ])
         )
@@ -1750,8 +1748,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             expected_changes=NoOp(),
@@ -1778,8 +1775,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/"),
                 ),
             ],
             expected_changes=in_parallel([
@@ -1813,16 +1809,14 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             expected_changes=in_parallel([
                 MountBlockDevice(
                     dataset_id=dataset_id,
                     blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
-                    mountpoint=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mountpoint=FilePath("/mount/point"),
                 ),
             ])
         )
@@ -1842,8 +1836,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             desired_datasets=[
@@ -1851,8 +1844,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     state=DatasetStates.MOUNTED,
                     dataset_id=dataset_id,
                     maximum_size=REALISTIC_BLOCKDEVICE_SIZE,
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             expected_changes=NoOp(),
@@ -1952,8 +1944,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             desired_datasets=[
@@ -2075,8 +2066,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
                     maximum_size=LOOPBACK_MINIMUM_ALLOCATABLE_SIZE,
                     device_path=FilePath('/dev/xvdf'),
-                    mount_point=self.deployer.mountroot.child(
-                        unicode(ScenarioMixin.DATASET_ID)),
+                    mount_point=FilePath("/mount/point"),
                 ),
             ],
             desired_datasets=[
