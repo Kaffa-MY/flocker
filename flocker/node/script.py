@@ -48,7 +48,7 @@ from .agents.loopback import (
     LoopbackBlockDeviceAPI,
 )
 from ..ca import ControlServicePolicy, NodeCredential
-
+from ..common._era import get_era
 
 __all__ = [
     "flocker_dataset_agent_main",
@@ -327,6 +327,7 @@ class AgentServiceFactory(PRecord):
                 cluster_uuid=tls_info.node_credential.cluster_uuid),
             host=host, port=port,
             context_factory=tls_info.context_factory,
+            era=get_era(),
         )
 
 
@@ -473,6 +474,7 @@ _DEFAULT_DEPLOYERS = {
         P2PManifestationDeployer(volume_service=api, **kw),
     DeployerType.block: lambda api, **kw:
         BlockDeviceDeployer(block_device_api=ProcessLifetimeCache(api),
+                            _profiled_blockdevice_api=api,
                             **kw),
 }
 
@@ -635,6 +637,7 @@ class AgentService(PRecord):
             deployer=deployer,
             host=self.control_service_host, port=self.control_service_port,
             context_factory=self.get_tls_context().context_factory,
+            era=get_era(),
         )
 
 

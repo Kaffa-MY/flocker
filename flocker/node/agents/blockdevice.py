@@ -20,7 +20,7 @@ from eliot.serializers import identity
 
 from zope.interface import implementer, Interface
 
-from pyrsistent import PRecord, PClass, field, pmap_field
+from pyrsistent import PRecord, PClass, field, pmap_field, pset_field
 
 import psutil
 
@@ -61,12 +61,21 @@ PROFILE_METADATA_KEY = u"clusterhq:flocker:profile"
 class DatasetStates(Names):
     """
     States that a ``Dataset`` can be in.
+
     """
+    # Doesn't exist yet.
     NON_EXISTENT = NamedConstant()
+    # Exists, but attached elsewhere
     ATTACHED_ELSEWHERE = NamedConstant()
+    # Exists, but not attached
     NON_MANIFEST = NamedConstant()
+    # Attached to this node but no filesystem
+    ATTACHED_NO_FILESYSTEM = NamedConstant()
+    # Attached to this node, has filesystem
     ATTACHED = NamedConstant()
+    # Mounted on this node
     MOUNTED = NamedConstant()
+    # Deleted from the driver
     DELETED = NamedConstant()
 
 
@@ -100,7 +109,8 @@ class DiscoveredDataset(PClass):
         that all the attributes required for the state are specified.
         """
         expected_attributes = [
-            ((DatasetStates.ATTACHED, DatasetStates.MOUNTED), "device_path"),
+            ((DatasetStates.ATTACHED, DatasetStates.MOUNTED,
+              DatasetStates.ATTACHED_NO_FILESYSTEM), "device_path"),
             ((DatasetStates.MOUNTED,), "mount_point"),
         ]
         for states, attribute in expected_attributes:
@@ -167,6 +177,7 @@ class DesiredDataset(PClass):
         allowed_states = (
             DatasetStates.ATTACHED, DatasetStates.NON_EXISTENT,
             DatasetStates.ATTACHED_ELSEWHERE,
+            DatasetStates.ATTACHED_NO_FILESYSTEM,
         )
         if self.state in allowed_states:
             return (False, "{class_} can't be in states {states}.".format(
@@ -286,13 +297,6 @@ MOUNTPOINT = Field(
     u"mounted.",
 )
 
-DEVICE_PATH = Field(
-    u"block_device_path",
-    lambda path: path.path,
-    u"The absolute path to the block device file on the node where the "
-    u"dataset is attached.",
-)
-
 BLOCK_DEVICE_ID = Field(
     u"block_device_id",
     lambda id: unicode(id),
@@ -337,7 +341,7 @@ CREATE_BLOCK_DEVICE_DATASET = ActionType(
 # context).  Or maybe this is fine as-is.
 BLOCK_DEVICE_DATASET_CREATED = MessageType(
     u"agent:blockdevice:created",
-    [DEVICE_PATH, BLOCK_DEVICE_ID, DATASET_ID, BLOCK_DEVICE_SIZE,
+    [BLOCK_DEVICE_PATH, BLOCK_DEVICE_ID, DATASET_ID, BLOCK_DEVICE_SIZE,
      BLOCK_DEVICE_COMPUTE_INSTANCE_ID],
     u"A block-device-backed dataset has been created.",
 )
@@ -398,7 +402,7 @@ DESTROY_VOLUME = ActionType(
 
 CREATE_FILESYSTEM = ActionType(
     u"agent:blockdevice:create_filesystem",
-    [VOLUME, FILESYSTEM_TYPE],
+    [BLOCK_DEVICE_PATH, FILESYSTEM_TYPE],
     [],
     u"A block device is being initialized with a filesystem.",
 )
@@ -425,6 +429,11 @@ CREATE_VOLUME_PROFILE_DROPPED = MessageType(
     u"does not support profiles. Use a backend that provides "
     u"IProfiledBlockDeviceAPI to get profile support."
 )
+
+DISCOVERED_RAW_STATE = MessageType(
+    u"agent:blockdevice:raw_state",
+    [Field(u"raw_state", safe_repr)],
+    u"The discovered raw state of the node's block device volumes.")
 
 
 def _volume_field():
@@ -532,27 +541,23 @@ class CreateFilesystem(PRecord):
     """
     Create a filesystem on a block device.
 
-    :ivar BlockDeviceVolume volume: The volume in which to create the
-        filesystem.
+    :ivar FilePath device: The device on which to create the filesystem.
     :ivar unicode filesystem: The name of the filesystem type to create.  For
         example, ``u"ext4"``.
     """
-    volume = _volume_field()
+    device = field(type=FilePath, mandatory=True)
     filesystem = field(type=unicode, mandatory=True)
 
     @property
     def eliot_action(self):
         return CREATE_FILESYSTEM(
-            _logger, volume=self.volume, filesystem_type=self.filesystem
+            _logger, block_device_path=self.device,
+            filesystem_type=self.filesystem
         )
 
     def run(self, deployer):
-        # FLOC-1816 Make this asynchronous
-        device = deployer.block_device_api.get_device_path(
-            self.volume.blockdevice_id
-        )
         try:
-            _ensure_no_filesystem(device)
+            _ensure_no_filesystem(self.device)
             check_output([
                 b"mkfs", b"-t", self.filesystem.encode("ascii"),
                 # This is ext4 specific, and ensures mke2fs doesn't ask
@@ -560,20 +565,17 @@ class CreateFilesystem(PRecord):
                 # format whole device rather than partition. It will be
                 # removed once upstream bug is fixed. See FLOC-2085.
                 b"-F",
-                device.path
+                self.device.path
             ])
         except:
             return fail()
         return succeed(None)
 
 
-def _ensure_no_filesystem(device):
+def _has_filesystem(device):
     """
-    Raises an error if there's already a filesystem on ``device``.
-
-    :raises: ``FilesystemExists`` if there is already a filesystem on
-        ``device``.
-    :return: ``None``
+    :return: Boolean which is true if a filesystem exists on the
+        ``device``, otherwise false.
     """
     try:
         check_output(
@@ -593,9 +595,21 @@ def _ensure_no_filesystem(device):
         # assumption.
         if e.returncode == 2 and not e.output:
             # There is no filesystem on this device.
-            return
+            return False
         raise
-    raise FilesystemExists(device)
+    return True
+
+
+def _ensure_no_filesystem(device):
+    """
+    Raises an error if there's already a filesystem on ``device``.
+
+    :raises: ``FilesystemExists`` if there is already a filesystem on
+        ``device``.
+    :return: ``None``
+    """
+    if _has_filesystem(device):
+        raise FilesystemExists(device)
 
 
 def _valid_size(size):
@@ -772,6 +786,33 @@ class AttachVolume(PRecord):
 
 
 @implementer(IStateChange)
+class ActionNeeded(PClass):
+    """
+    We need to take some action on a dataset but lack the necessary
+    information to do so.
+
+    Creating this is still useful insofar as it may let the convergence
+    loop know that it should wake up and do discovery, which would allow
+    us to get the actual ``IStateChange`` calculated.
+
+    :ivar UUID dataset_id: The unique identifier of the dataset associated with
+        the volume to attach.
+    """
+    dataset_id = field(type=UUID, mandatory=True)
+
+    # Nominal interface compliance; we don't expect this to be ever run,
+    # it's just a marker object basically.
+    eliot_action = None
+
+    def run(self, deployer):
+        """
+        This should not ever be run; doing so suggests a bug somewhere.
+        """
+        return fail(NotImplementedError(
+            "This should never happen when calculating in anger."))
+
+
+@implementer(IStateChange)
 class DetachVolume(PRecord):
     """
     Detach a volume from the node it is currently attached to.
@@ -943,7 +984,7 @@ class CreateBlockDeviceDataset(PRecord):
         )
         device = api.get_device_path(volume.blockdevice_id)
 
-        create = CreateFilesystem(volume=volume, filesystem=u"ext4")
+        create = CreateFilesystem(device=device, filesystem=u"ext4")
         d = run_state_change(create, deployer)
 
         mount = MountBlockDevice(dataset_id=volume.dataset_id,
@@ -1165,7 +1206,7 @@ class MandatoryProfiles(Values):
     GOLD = ValueConstant(u'gold')
     SILVER = ValueConstant(u'silver')
     BRONZE = ValueConstant(u'bronze')
-    DEFAULT = SILVER
+    DEFAULT = ValueConstant(BRONZE.value)
 
 
 class IProfiledBlockDeviceAPI(Interface):
@@ -1297,20 +1338,23 @@ class RawState(PClass):
     """
     The raw state of a node.
 
-    :param unicode compute_instance_id:
-    :param volumes: List of volumes attached to this node or non-manifest.
+    :param unicode compute_instance_id: The identifier for this node.
+    :param volumes: List of all volumes in the cluster.
     :type volumes: ``pvector`` of ``BlockDeviceVolume``
     :param devices: Mapping from dataset UUID to block device path containing
-        filesystem of that dataset.
+        filesystem of that dataset, on this particular node.
     :type devices: ``pmap`` of ``UUID`` to ``FilePath``
     :param system_mounts: Mapping of block device path to mount point of all
-        mounts on the system.
+        mounts on this particular node.
     :type system_mounts: ``pmap`` of ``FilePath`` to ``FilePath``.
+    :param devices_with_filesystems: ``PSet`` of ``FilePath`` including
+        those devices that have filesystems on this node.
     """
     compute_instance_id = field(unicode, mandatory=True)
     volumes = pvector_field(BlockDeviceVolume)
     devices = pmap_field(UUID, FilePath)
     system_mounts = pmap_field(FilePath, FilePath)
+    devices_with_filesystems = pset_field(FilePath)
 
 
 @implementer(ILocalState)
@@ -1344,6 +1388,7 @@ class BlockDeviceDeployerLocalState(PClass):
         paths = {}
         devices = {}
         nonmanifest_datasets = {}
+
         for dataset in self.datasets.values():
             dataset_id = dataset.dataset_id
             if dataset.state == DatasetStates.MOUNTED:
@@ -1357,6 +1402,7 @@ class BlockDeviceDeployerLocalState(PClass):
                 paths[unicode(dataset_id)] = dataset.mount_point
             elif dataset.state in (
                 DatasetStates.NON_MANIFEST, DatasetStates.ATTACHED,
+                DatasetStates.ATTACHED_NO_FILESYSTEM,
             ):
                 nonmanifest_datasets[unicode(dataset_id)] = Dataset(
                     dataset_id=dataset_id,
@@ -1364,6 +1410,7 @@ class BlockDeviceDeployerLocalState(PClass):
                 )
             if dataset.state in (
                 DatasetStates.MOUNTED, DatasetStates.ATTACHED,
+                DatasetStates.ATTACHED_NO_FILESYSTEM,
             ):
                 devices[dataset_id] = dataset.device_path
 
@@ -1457,6 +1504,9 @@ class BlockDeviceDeployer(PRecord):
     :ivar UUID node_uuid: The UUID of the node that has this deployer.
     :ivar IBlockDeviceAPI block_device_api: The block device API that will be
         called upon to perform block device operations.
+    :ivar IProfiledBlockDeviceAPI _profiled_blockdevice_api: The block device
+        API that will be called upon to perform block device operations with
+        profiles.
     :ivar FilePath mountroot: The directory where block devices will be
         mounted.
     :ivar _async_block_device_api: An object to override the value of the
@@ -1466,6 +1516,7 @@ class BlockDeviceDeployer(PRecord):
     hostname = field(type=unicode, mandatory=True)
     node_uuid = field(type=UUID, mandatory=True)
     block_device_api = field(mandatory=True)
+    _profiled_blockdevice_api = field(mandatory=True, initial=None)
     _async_block_device_api = field(mandatory=True, initial=None)
     mountroot = field(type=FilePath, initial=FilePath(b"/flocker"))
     poll_interval = timedelta(seconds=60.0)
@@ -1479,8 +1530,13 @@ class BlockDeviceDeployer(PRecord):
     def profiled_blockdevice_api(self):
         """
         Get an ``IProfiledBlockDeviceAPI`` provider which can create volumes
-        configured based on pre-defined profiles.
+        configured based on pre-defined profiles. This will use the
+        _profiled_blockdevice_api attribute, falling back to the
+        block_device_api attributed and finally an adapter implementation
+        around the block_device_api if neither of those provide the interface.
         """
+        if IProfiledBlockDeviceAPI.providedBy(self._profiled_blockdevice_api):
+            return self._profiled_blockdevice_api
         if IProfiledBlockDeviceAPI.providedBy(self.block_device_api):
             return self.block_device_api
         return ProfiledBlockDeviceAPIAdapter(
@@ -1544,12 +1600,16 @@ class BlockDeviceDeployer(PRecord):
                     # in the filesystem yet.
                     pass
 
-        return RawState(
+        result = RawState(
             compute_instance_id=compute_instance_id,
             volumes=volumes,
             devices=devices,
             system_mounts=system_mounts,
+            devices_with_filesystems=[device for device in devices.values()
+                                      if _has_filesystem(device)],
         )
+        DISCOVERED_RAW_STATE(raw_state=result).write()
+        return result
 
     def discover_state(self, node_state):
         """
@@ -1580,8 +1640,12 @@ class BlockDeviceDeployer(PRecord):
                         mount_point=mount_point,
                     )
                 else:
+                    if device_path in raw_state.devices_with_filesystems:
+                        state = DatasetStates.ATTACHED
+                    else:
+                        state = DatasetStates.ATTACHED_NO_FILESYSTEM
                     datasets[dataset_id] = DiscoveredDataset(
-                        state=DatasetStates.ATTACHED,
+                        state=state,
                         dataset_id=dataset_id,
                         maximum_size=volume.size,
                         blockdevice_id=volume.blockdevice_id,

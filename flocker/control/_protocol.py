@@ -1,4 +1,4 @@
-# Copyright Hybrid Logic Ltd.  See LICENSE file for details.
+# Copyright ClusterHQ Inc.  See LICENSE file for details.
 
 """
 Communication protocol between control service and convergence agent.
@@ -36,8 +36,11 @@ from io import BytesIO
 from itertools import count
 from contextlib import contextmanager
 from twisted.internet.defer import maybeDeferred
+from uuid import UUID
 
-from eliot import Logger, ActionType, Action, Field, MessageType
+from eliot import (
+    Logger, ActionType, Action, Field, MessageType,
+)
 from eliot.twisted import DeferredContext
 
 from pyrsistent import PClass, field
@@ -58,7 +61,7 @@ from twisted.protocols.tls import TLSMemoryBIOFactory
 
 from ._persistence import wire_encode, wire_decode
 from ._model import (
-    Deployment, DeploymentState, ChangeSource,
+    Deployment, DeploymentState, ChangeSource, UpdateNodeStateEra,
 )
 
 PING_INTERVAL = timedelta(seconds=30)
@@ -240,6 +243,20 @@ class ClusterStatusCommand(Command):
     response = []
 
 
+class SetNodeEraCommand(Command):
+    """
+    Tell the control service the current era for a node.
+
+    This should clear any previous NodeState that has a different
+    era. Updates to the node should only be sent after this command, to
+    ensure it doesn't get stale pre-reboot information (i.e. NodeState
+    with wrong era).
+    """
+    arguments = [('era', Unicode()),
+                 ('node_uuid', Unicode())]
+    response = []
+
+
 class NodeStateCommand(Command):
     """
     Used by a convergence agent to update the control service about the
@@ -325,6 +342,17 @@ class ControlServiceLocator(CommandLocator):
                 self._source, state_changes,
             )
             return {}
+
+    @SetNodeEraCommand.responder
+    def set_node_era(self, era, node_uuid):
+        # Further work will be done in FLOC-3380
+        self.control_amp_service.cluster_state.apply_changes_from_source(
+            self._source, [UpdateNodeStateEra(era=UUID(era),
+                                              uuid=UUID(node_uuid))])
+        # We don't bother sending an update to other nodes because this
+        # command will immediately be followed by a ``NodeStateCommand``
+        # with more interesting information.
+        return {}
 
 
 class ControlAMP(AMP):

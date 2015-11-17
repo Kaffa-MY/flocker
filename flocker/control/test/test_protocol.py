@@ -1,4 +1,4 @@
-# Copyright Hybrid Logic Ltd.  See LICENSE file for details.
+# Copyright ClusterHQ Inc.  See LICENSE file for details.
 
 """
 Tests for ``flocker.control._protocol``.
@@ -34,14 +34,15 @@ from twisted.application.internet import StreamServerEndpointService
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.task import Clock
 
-from ...testtools.amp import DelayedAMPClient
+from ...testtools.amp import DelayedAMPClient, connected_amp_protocol
 
 from .._protocol import (
     PING_INTERVAL, Big, SerializableArgument,
     VersionCommand, ClusterStatusCommand, NodeStateCommand, IConvergenceAgent,
     NoOp, AgentAMP, ControlAMPService, ControlAMP, _AgentLocator,
     ControlServiceLocator, LOG_SEND_CLUSTER_STATE, LOG_SEND_TO_AGENT,
-    AGENT_CONNECTED, CachingEncoder, _caching_encoder
+    AGENT_CONNECTED, CachingEncoder, _caching_encoder,
+    SetNodeEraCommand,
 )
 from .._clusterstate import ClusterStateService
 from .. import (
@@ -650,6 +651,22 @@ class ControlAMPTests(ControlTestCase):
             self.control_amp_service.cluster_state.as_deployment(),
         )
 
+    def test_set_node_era(self):
+        """
+        A ``SetNodeEraCommand`` results in the node's era being
+        updated.
+        """
+        node_uuid = uuid4()
+        era = uuid4()
+        d = self.client.callRemote(SetNodeEraCommand,
+                                   node_uuid=unicode(node_uuid),
+                                   era=unicode(era))
+        self.successResultOf(d)
+        self.assertEqual(
+            DeploymentState(node_uuid_to_era={node_uuid: era}),
+            self.control_amp_service.cluster_state.as_deployment(),
+        )
+
 
 class ControlAMPServiceTests(ControlTestCase):
     """
@@ -1027,7 +1044,7 @@ def iconvergence_agent_tests_factory(fixture):
             ``IConvergenceAgent.connected()`` takes an AMP instance.
             """
             agent = fixture(self)
-            agent.connected(AMP())
+            agent.connected(connected_amp_protocol())
 
         def test_disconnected(self):
             """
@@ -1035,7 +1052,7 @@ def iconvergence_agent_tests_factory(fixture):
             ``IConvergenceAgent.connected()``.
             """
             agent = fixture(self)
-            agent.connected(AMP())
+            agent.connected(connected_amp_protocol())
             agent.disconnected()
 
         def test_reconnected(self):
@@ -1044,9 +1061,9 @@ def iconvergence_agent_tests_factory(fixture):
             ``IConvergenceAgent.disconnected()``.
             """
             agent = fixture(self)
-            agent.connected(AMP())
+            agent.connected(connected_amp_protocol())
             agent.disconnected()
-            agent.connected(AMP())
+            agent.connected(connected_amp_protocol())
 
         def test_cluster_updated(self):
             """
@@ -1054,9 +1071,9 @@ def iconvergence_agent_tests_factory(fixture):
             instances.
             """
             agent = fixture(self)
-            agent.connected(AMP())
+            agent.connected(connected_amp_protocol())
             agent.cluster_updated(
-                Deployment(nodes=frozenset()), Deployment(nodes=frozenset()))
+                Deployment(nodes=frozenset()), DeploymentState(nodes=[]))
 
         def test_interface(self):
             """
