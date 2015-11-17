@@ -1757,9 +1757,7 @@ class BlockDeviceDeployer(PRecord):
         for dataset_id, dataset in local_datasets.items():
             if dataset in not_in_use_datasets:
                 continue
-            if dataset.state not in (
-                DatasetStates.ATTACHED, DatasetStates.MOUNTED
-            ):
+            if dataset.state != DatasetStates.MOUNTED:
                 # A lease doesn't force a mount.
                 continue
             # This may override something from above, if there is a
@@ -1768,9 +1766,9 @@ class BlockDeviceDeployer(PRecord):
                 dataset_id=dataset_id,
                 state=DatasetStates.MOUNTED,
                 maximum_size=dataset.maximum_size,
-                # XXX ?
+                # XXX We don't populate metadata here, but it isn't necessary
+                # until we want to update it.
                 metadata={},
-                # XXX What to do in the ATTACHED state.
                 mount_point=self._mountpath_for_dataset_id(
                     unicode(dataset_id)
                 ),
