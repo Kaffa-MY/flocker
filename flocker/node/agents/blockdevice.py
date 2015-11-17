@@ -1470,10 +1470,19 @@ DATASET_TRANSITIONS = {
 @implementer(ICalculater)
 class BlockDeviceCalculater(PClass):
     """
-    XXX
+    An ``ICalculater`` that calculates actions that use a
+    ``BlockDeviceDeployer``.
     """
     def _calculate_dataset_change(self, discovered_dataset, desired_dataset):
+        """
+        Calculate the state changes necessary to make ``discovered_dataset``
+        state match ``desired_dataset`` configuration.
 
+        :param discovered_dataset: The current state of the dataset.
+        :type discovered_dataset: ``DiscoveredDataset`` or ``None``
+        :param desired_dataset: The desired state of the dataset.
+        :type desired_dataset: ``DesiredDataset`` or ``None``
+        """
         # If the configuration doesn't know about a dataset,
         # we detach it.
         desired_state = (desired_dataset.state
