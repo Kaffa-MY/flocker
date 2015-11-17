@@ -1667,7 +1667,6 @@ def assert_calculated_changes(
     Assert that ``BlockDeviceCalculater`` calculates certain changes
     in a certain circumstance.
 
-    XXX
     :param TestCase test_case: The ``TestCase`` which is being run.
     :param discovered_datasets: The current state of datasets on the
         node.
