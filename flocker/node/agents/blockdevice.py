@@ -102,6 +102,8 @@ class DiscoveredDataset(PClass):
     blockdevice_id = field(type=unicode, mandatory=True)
     device_path = field(FilePath)
     mount_point = field(FilePath)
+    filesystem = field(unicode, initial=u"ext4", mandatory=True,
+                       invariant=lambda v: v == "ext4")
 
     def __invariant__(self):
         """
@@ -557,6 +559,13 @@ class CreateFilesystem(PRecord):
     """
     device = field(type=FilePath, mandatory=True)
     filesystem = field(type=unicode, mandatory=True)
+
+    @classmethod
+    def from_dataset(cls, discovered_dataset, desired_dataset):
+        return cls(
+            device=discovered_dataset.device_path,
+            filesystem=desired_dataset.filesystem,
+        )
 
     @property
     def eliot_action(self):
