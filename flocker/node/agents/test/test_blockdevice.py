@@ -1217,7 +1217,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
             self, self.deployer,
             desired_manifestations=[
                 ScenarioMixin.MANIFESTATION.transform(
-                    ["dataset"], lambda d: d.set(deleted=True)
+                    ["dataset", "deleted"], True,
                 ),
             ],
             # XXX FLOC-1772 We only need to do this to handle
