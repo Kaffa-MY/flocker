@@ -62,7 +62,7 @@ class DatasetStates(Names):
     """
     States that a ``Dataset`` can be in.
     """
-    NON_EXISTANT = NamedConstant()
+    NON_EXISTENT = NamedConstant()
     ATTACHED_ELSEWHERE = NamedConstant()
     NON_MANIFEST = NamedConstant()
     ATTACHED = NamedConstant()
@@ -120,7 +120,7 @@ class DiscoveredDataset(PClass):
                         )
                     )
                 return (False, message)
-        if self.state in (DatasetStates.DELETED, DatasetStates.NON_EXISTANT):
+        if self.state in (DatasetStates.DELETED, DatasetStates.NON_EXISTENT):
             return (False, "DesiredDataset can't be in state DELETED.")
         return (True, "")
 
@@ -168,7 +168,7 @@ class DesiredDataset(PClass):
                     )
                 return (False, message)
         if self.state in (
-            DatasetStates.ATTACHED, DatasetStates.NON_EXISTANT,
+            DatasetStates.ATTACHED, DatasetStates.NON_EXISTENT,
             DatasetStates.ATTACHED_ELSEWHERE,
         ):
             return (False, "DesiredDataset can't be in state ATTACHED.")
@@ -1386,13 +1386,13 @@ class BlockDeviceDeployerLocalState(PClass):
 # ``desired_dataset`` and ``discovered_dataset``.
 DATASET_TRANSITIONS = {
     DatasetStates.MOUNTED: {
-        DatasetStates.NON_EXISTANT: CreateBlockDeviceDataset.from_dataset,
+        DatasetStates.NON_EXISTENT: CreateBlockDeviceDataset.from_dataset,
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
         DatasetStates.NON_MANIFEST: AttachVolume.from_dataset,
         DatasetStates.ATTACHED: MountBlockDevice.from_dataset,
     },
     DatasetStates.NON_MANIFEST: {
-        DatasetStates.NON_EXISTANT: lambda **kwargs: NoOp(),
+        DatasetStates.NON_EXISTENT: lambda **kwargs: NoOp(),
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
         DatasetStates.ATTACHED: DetachVolume.from_dataset,
         DatasetStates.MOUNTED: UnmountBlockDevice.from_dataset,
@@ -1422,7 +1422,7 @@ class BlockDeviceCalculater(PClass):
         # exist.
         discovered_state = (discovered_dataset.state
                             if discovered_dataset is not None
-                            else DatasetStates.NON_EXISTANT)
+                            else DatasetStates.NON_EXISTENT)
         if desired_state != discovered_state:
             return DATASET_TRANSITIONS[desired_state][discovered_state](
                 discovered_dataset=discovered_dataset,

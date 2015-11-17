@@ -1601,7 +1601,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
     # XXX It would be nice if there were some way to assert that these tests
     # are exhaustive.  It seems like this logic should be abstracted somehow.
 
-    def test_NON_EXISTANT_MOUNTED_creates_volume(self):
+    def test_NON_EXISTENT_MOUNTED_creates_volume(self):
         """
         If a volume doesn't exist and the desired state is ``MOUNTED``, then
         the expected change is to create the volume.
@@ -1759,7 +1759,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
             expected_changes=NoOp(),
         )
 
-    def test_NON_EXISTANT_NON_MANIFEST_does_nothing(self):
+    def test_NON_EXISTENT_NON_MANIFEST_does_nothing(self):
         """
         If a volume doesn't exist and the desired state is ``NON_MANIFEST``,
         then the expected change is to do nothing.
@@ -1872,7 +1872,7 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
             ]),
         )
 
-    def test_NON_EXISTANT_DELETED_does_nothing(self):
+    def test_NON_EXISTENT_DELETED_does_nothing(self):
         """
         If a volume doesn't exist and the desired state is ``DELETED``,
         then the expected change is to do nothing.
