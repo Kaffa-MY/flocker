@@ -1525,6 +1525,8 @@ class BlockDeviceDeployer(PRecord):
     :ivar _async_block_device_api: An object to override the value of the
         ``async_block_device_api`` property.  Used by tests.  Should be
         ``None`` in real-world use.
+    :ivar ICalculater calculater: The object to use to calculate dataset
+        changes.
     """
     hostname = field(type=unicode, mandatory=True)
     node_uuid = field(type=UUID, mandatory=True)
@@ -1534,8 +1536,9 @@ class BlockDeviceDeployer(PRecord):
     mountroot = field(type=FilePath, initial=FilePath(b"/flocker"))
     poll_interval = timedelta(seconds=60.0)
     calculater = field(
+        # XXX We should abstact this invariant out.
         invariant=lambda i: (ICalculater.providedBy(i),
-                             "Must provide ICalculater"),  # XXX
+                             "Must provide ICalculater"),
         mandatory=True,
         initial=BlockDeviceCalculater())
 
