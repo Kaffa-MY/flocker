@@ -1245,10 +1245,10 @@ class CalculateDesiredStateTests(SynchronousTestCase):
         """
         If there is a non-manifest dataset that is deleted on this
         node, the corresponding dataset has a desired state of
-        ``DELETED``.
+        ``MOUNTED``.
 
         This is only necessary until we can delete non-manifest datasets
-        (FLOC-1172).
+        (FLOC-1772).
         """
         assert_desired_datasets(
             self, self.deployer,
@@ -1286,7 +1286,8 @@ class CalculateDesiredStateTests(SynchronousTestCase):
         If there is a manfestation on this node that is deleted,
         the corresponding dataset has a desired state of ``MOUNTED``.
 
-        This is only necessary until we can delete non-manifest datasets.
+        This is only necessary until we can delete non-manifest datasets
+        (FLOC-1772).
         """
         assert_desired_datasets(
             self, self.deployer,
