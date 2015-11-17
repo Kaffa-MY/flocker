@@ -189,13 +189,23 @@ class DesiredDataset(PClass):
 
 class ICalculater(Interface):
     """
-    XXX
+    An object that can calculate the changes required to bring dataset state
+    and desired dataset configuration into alignment.
     """
     def calculate_changes_for_datasets(
         self, discovered_datasets, desired_datasets,
     ):
         """
-        XXX
+        Calculate the state changes necessary to make the local state match the
+        desired cluster configuration.
+
+        :param discovered_datasets: The datasets that have been discovered.
+        :type discovered_datasets: mapping of `dataset_id`` to
+            ``DiscoveredDataset``.
+        :param desired_datasets: The datasets that are desired on this node.
+        :type desired_datasets: mapping of `dataset_id`` to ``DesiredDataset``.
+
+        :return: An ``IStateChange`` provider.
         """
 
 
