@@ -145,8 +145,6 @@ class DesiredDataset(PClass):
         expected_attributes = [
             ((DatasetStates.NON_MANIFEST, DatasetStates.MOUNTED),
              "maximum_size"),
-        ]
-        expected_attributes = [
             ((DatasetStates.MOUNTED,),
              "mount_point"),
         ]
