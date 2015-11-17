@@ -164,11 +164,15 @@ class DesiredDataset(PClass):
                         )
                     )
                 return (False, message)
-        if self.state in (
+        allowed_states = (
             DatasetStates.ATTACHED, DatasetStates.NON_EXISTENT,
             DatasetStates.ATTACHED_ELSEWHERE,
-        ):
-            return (False, "DesiredDataset can't be in state ATTACHED.")
+        )
+        if self.state in allowed_states:
+            return (False, "{class_} can't be in states {states}.".format(
+                class_=self.__class__,
+                states=','.join(map("`{0.name}`".format, allowed_states)),
+            ))
         return (True, "")
 
 
