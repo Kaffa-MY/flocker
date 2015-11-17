@@ -1436,18 +1436,21 @@ DATASET_TRANSITIONS = {
     DatasetStates.MOUNTED: {
         DatasetStates.NON_EXISTENT: CreateBlockDeviceDataset.from_dataset,
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
+        DatasetStates.ATTACHED_NO_FILESYSTEM: CreateFilesystem.from_dataset,
         DatasetStates.NON_MANIFEST: AttachVolume.from_dataset,
         DatasetStates.ATTACHED: MountBlockDevice.from_dataset,
     },
     DatasetStates.NON_MANIFEST: {
         DatasetStates.NON_EXISTENT: lambda **kwargs: NoOp(),
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
+        DatasetStates.ATTACHED_NO_FILESYSTEM: DetachVolume.from_dataset,
         DatasetStates.ATTACHED: DetachVolume.from_dataset,
         DatasetStates.MOUNTED: UnmountBlockDevice.from_dataset,
     },
     DatasetStates.DELETED: {
         DatasetStates.ATTACHED_ELSEWHERE: lambda **kwargs: NoOp(),
         DatasetStates.NON_MANIFEST: lambda **kwargs: NoOp(),
+        DatasetStates.ATTACHED_NO_FILESYSTEM: DetachVolume.from_dataset,
         DatasetStates.ATTACHED: lambda **kwargs: NoOp(),
         DatasetStates.MOUNTED: DestroyBlockDeviceDataset.from_dataset,
     },
