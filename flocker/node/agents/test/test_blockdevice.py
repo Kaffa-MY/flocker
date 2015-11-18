@@ -83,7 +83,7 @@ from ..loopback import (
 )
 
 
-from ... import run_state_change, in_parallel, ILocalState, NoOp
+from ... import run_state_change, in_parallel, ILocalState, NoOp, IStateChange
 from ...testtools import (
     ideployer_tests_factory, to_node, assert_calculated_changes_for_deployer,
     ControllableAction,
@@ -1575,7 +1575,7 @@ class CalculateDesiredStateTests(SynchronousTestCase):
         If there is a manifesation on this node and lease for the
         corresponding volume for this node, then the corresponding
         dataset has a desired state of ``MOUNTED`` and the
-        associated size corresponds to the discovered datset.
+        associated size corresponds to the discovered dataset.
         """
         assert_desired_datasets(
             self, self.deployer,
@@ -2014,10 +2014,10 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
             expected_changes=NoOp(),
         )
 
-    def test_ATTACHED_DELETED_mounts(self):
+    def test_ATTACHED_DELETED_detaches(self):
         """
         If a volume is currently ``ATTACHED`` and the desired state is
-        ``DELETED``, then the expected change is to do nothing.
+        ``DELETED``, then the expected change is detach.
         """
         dataset_id = uuid4()
         assert_calculated_changes(
@@ -2037,7 +2037,12 @@ class BlockDeviceCalculaterTests(SynchronousTestCase):
                     dataset_id=dataset_id,
                 ),
             ],
-            expected_changes=NoOp(),
+            expected_changes=in_parallel([
+                DetachVolume(
+                    dataset_id=dataset_id,
+                    blockdevice_id=ARBITRARY_BLOCKDEVICE_ID,
+                ),
+            ]),
         )
 
     def test_MOUNTED_DELETED_destroys(self):

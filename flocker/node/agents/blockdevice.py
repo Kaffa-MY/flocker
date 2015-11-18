@@ -1487,6 +1487,7 @@ DATASET_TRANSITIONS = {
         Discovered.MOUNTED: UnmountBlockDevice.from_state_and_config,
     },
     Desired.DELETED: {
+        Discovered.NON_EXISTENT: DO_NOTHING,
         # Other node will destroy
         Discovered.ATTACHED_ELSEWHERE: DO_NOTHING,
         # Can't pick node that will do destruction yet.
