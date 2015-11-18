@@ -102,20 +102,28 @@ class DiscoveredDataset(PClass):
     blockdevice_id = field(type=unicode, mandatory=True)
     device_path = field(FilePath)
     mount_point = field(FilePath)
-    filesystem = field(unicode, initial=u"ext4", mandatory=True,
-                       invariant=lambda v: v == "ext4")
+
+    ALLOWED_STATES = (
+        DatasetStates.ATTACHED_ELSEWHERE,
+        DatasetStates.NON_MANIFEST,
+        DatasetStates.ATTACHED_NO_FILESYSTEM,
+        DatasetStates.ATTACHED,
+        DatasetStates.MOUNTED,
+    )
+    EXPECTED_ATTRIBUTES = {
+        "device_path": {
+            DatasetStates.ATTACHED, DatasetStates.MOUNTED,
+            DatasetStates.ATTACHED_NO_FILESYSTEM,
+        },
+        "mount_point": {DatasetStates.MOUNTED},
+    }
 
     def __invariant__(self):
         """
         Check that the state is valid for a ``DiscoveredDataset`` and
         that all the attributes required for the state are specified.
         """
-        expected_attributes = [
-            ((DatasetStates.ATTACHED, DatasetStates.MOUNTED,
-              DatasetStates.ATTACHED_NO_FILESYSTEM), "device_path"),
-            ((DatasetStates.MOUNTED,), "mount_point"),
-        ]
-        for states, attribute in expected_attributes:
+        for attribute, states in self.EXPECTED_ATTRIBUTES.items():
             if (self.state in states) != hasattr(self, attribute):
                 if self.state in states:
                     message = (
@@ -131,8 +139,11 @@ class DiscoveredDataset(PClass):
                         )
                     )
                 return (False, message)
-        if self.state in (DatasetStates.DELETED, DatasetStates.NON_EXISTENT):
-            return (False, "DesiredDataset can't be in state DELETED.")
+        if self.state not in self.ALLOWED_STATES:
+            return (False, "{class_} can only be in states {states}.".format(
+                class_=self.__class__,
+                states=','.join(map("`{0.name}`".format, self.ALLOWED_STATES)),
+            ))
         return (True, "")
 
 
@@ -152,15 +163,21 @@ class DesiredDataset(PClass):
         value_type=unicode,
     )
     mount_point = field(FilePath)
+    filesystem = field(unicode, initial=u"ext4", mandatory=True,
+                       invariant=lambda v: v == "ext4")
+
+    ALLOWED_STATES = (
+        DatasetStates.NON_MANIFEST,
+        DatasetStates.MOUNTED,
+        DatasetStates.DELETED,
+    )
+    EXPECTED_ATTRIBUTES = {
+        "maximum_size": {DatasetStates.NON_MANIFEST, DatasetStates.MOUNTED},
+        "mount_point": {DatasetStates.MOUNTED},
+    }
 
     def __invariant__(self):
-        expected_attributes = [
-            ((DatasetStates.NON_MANIFEST, DatasetStates.MOUNTED),
-             "maximum_size"),
-            ((DatasetStates.MOUNTED,),
-             "mount_point"),
-        ]
-        for states, attribute in expected_attributes:
+        for attribute, states in self.EXPECTED_ATTRIBUTES.items():
             if (self.state in states) != hasattr(self, attribute):
                 if self.state in states:
                     message = (
@@ -176,15 +193,10 @@ class DesiredDataset(PClass):
                         )
                     )
                 return (False, message)
-        disallowed_states = (
-            DatasetStates.ATTACHED, DatasetStates.NON_EXISTENT,
-            DatasetStates.ATTACHED_ELSEWHERE,
-            DatasetStates.ATTACHED_ELSEWHERE,
-        )
-        if self.state in disallowed_states:
-            return (False, "{class_} can't be in states {states}.".format(
+        if self.state not in self.ALLOWED_STATES:
+            return (False, "{class_} can only be in states {states}.".format(
                 class_=self.__class__,
-                states=','.join(map("`{0.name}`".format, disallowed_states)),
+                states=','.join(map("`{0.name}`".format, self.ALLOWED_STATES)),
             ))
         return (True, "")
 
