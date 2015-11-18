@@ -207,7 +207,7 @@ class ICalculater(Interface):
     and desired dataset configuration into alignment.
     """
     def calculate_changes_for_datasets(
-        self, discovered_datasets, desired_datasets,
+        discovered_datasets, desired_datasets,
     ):
         """
         Calculate the state changes necessary to make the local state match the
