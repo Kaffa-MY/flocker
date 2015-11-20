@@ -170,16 +170,22 @@ class DockerPluginTests(AsyncTestCase):
         # also, if a user types in 50mib, flocker defaults to
         # at least 1G because this is AWS minimums etc, so this test
         # cannot test all expressions but we test g, gib, gb.
+        # openstack cinder must have between 75-100GB :(
+        # http://www.rackspace.com/knowledge_center/product-faq
+        # /cloud-block-storage
+        # https://github.com/ClusterHQ/flocker/blob/
+        # 780b22a443d1f2c10211b12e08d08ab1585099dc/flocker/
+        # node/agents/cinder.py#L471 passes it through
         size_expressions = list(chain.from_iterable((x, x+"b", x+"ib")
                                 for x in ["g"]))
-        size = str(randint(1, 75)) + str(
+        size = str(randint(75, 95)) + str(
             size_expressions[randint(0, len(size_expressions) - 1)])
         self._create_volume(client, volume_name,
                             driver_opts={'size': size},
                             cleanup=False)
         http_port = 8080
         host_port = find_free_port()[1]
-        cid = self.run_python_container(
+        self.run_python_container(
             cluster, node.public_address,
             {"host_config": client.create_host_config(
                 binds=["{}:/sizedvoldata".format(volume_name)],
@@ -188,7 +194,7 @@ class DockerPluginTests(AsyncTestCase):
                 privileged=True),
              "ports": [http_port]},
             SCRIPTS.child(b"lsblkhttp.py"),
-            [u""], cleanup=False, client=client)
+            [u""], client=client)
 
         d = assert_http_server(self,
                                node.public_address,
@@ -208,12 +214,6 @@ class DockerPluginTests(AsyncTestCase):
         d.addCallback(lambda _: assert_http_server(
             self, node.public_address, host_port,
             expected_response=str(parse_num(size))))
-
-        # cleanups seem racey
-        def _cleanup(unused_args):
-            client.remove_container(cid, force=True)
-            # client.remove_volume(volume_name)
-        d.addCallback(_cleanup)
 
         return d
 
