@@ -175,7 +175,8 @@ class DockerPluginTests(AsyncTestCase):
         size = str(randint(1, 75)) + str(
             size_expressions[randint(0, len(size_expressions) - 1)])
         self._create_volume(client, volume_name,
-                            driver_opts={'size': size})
+                            driver_opts={'size': size},
+                            cleanup=False)
         http_port = 8080
         host_port = find_free_port()[1]
         cid = self.run_python_container(
@@ -209,10 +210,10 @@ class DockerPluginTests(AsyncTestCase):
             expected_response=str(parse_num(size))))
 
         # cleanups seem racey
-        def _cleanup_in_order(unused_args):
+        def _cleanup(unused_args):
             client.remove_container(cid, force=True)
             # client.remove_volume(volume_name)
-        d.addCallback(_cleanup_in_order)
+        d.addCallback(_cleanup)
 
         return d
 
