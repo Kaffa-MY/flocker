@@ -181,8 +181,7 @@ class DockerPluginTests(AsyncTestCase):
         size = str(randint(75, 95)) + str(
             size_expressions[randint(0, len(size_expressions) - 1)])
         self._create_volume(client, volume_name,
-                            driver_opts={'size': size},
-                            cleanup=False)
+                            driver_opts={'size': size})
         http_port = 8080
         host_port = find_free_port()[1]
         self.run_python_container(
