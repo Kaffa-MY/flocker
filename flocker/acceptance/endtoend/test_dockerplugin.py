@@ -181,7 +181,7 @@ class DockerPluginTests(AsyncTestCase):
         cid = self.run_python_container(
             cluster, node.public_address,
             {"host_config": client.create_host_config(
-                binds=["{}:/data".format(volume_name)],
+                binds=["{}:/sizedvoldata".format(volume_name)],
                 port_bindings={http_port: host_port},
                 restart_policy={"Name": "always"},
                 privileged=True),

@@ -20,7 +20,7 @@ class Handler(BaseHTTPRequestHandler):
                     parts = line.split(' ')
                     if len(parts) > 2:
                         mounts[parts[2]] = parts[0]
-                device_path = mounts["/data"]
+                device_path = mounts["/sizedvoldata"]
 
                 command = [b"/bin/lsblk", b"--noheadings", b"--bytes",
                            b"--output", b"SIZE", device_path.encode("ascii")]
