@@ -4,6 +4,9 @@
 Tests for the Flocker Docker plugin.
 """
 
+from random import randint
+from itertools import chain
+
 from twisted.internet import reactor
 from twisted.trial.unittest import SkipTest
 
@@ -20,6 +23,8 @@ from ..testtools import (
     get_docker_client, verify_socket, check_http_server, DatasetBackend,
     create_dataset,
 )
+
+from ...dockerplugin.testtools import parse_num
 
 from ..scripts import SCRIPTS
 
@@ -118,7 +123,7 @@ class DockerPluginTests(AsyncTestCase):
             self.addCleanup(client.remove_container, cid, force=True)
         return cid
 
-    def _create_volume(self, client, name, driver_opts):
+    def _create_volume(self, client, name, driver_opts, cleanup=True):
         """
         Create a volume with the given name and driver options on the passed in
         docker client.
@@ -143,8 +148,82 @@ class DockerPluginTests(AsyncTestCase):
             'DriverOpts': driver_opts,
         }
         result = client._result(client._post_json(url, data=data), True)
-        self.addCleanup(client.remove_volume, name)
+        if cleanup:
+            self.addCleanup(client.remove_volume, name)
         return result
+
+    def _test_sized_vol_container(self, cluster, node):
+        """
+        Create a volume with a size, then create a
+        container that can use that volume and run lsbk to test
+        its size. An http server inside the container uses lsblk to
+        return the size of the volume when path is not "/is_http"
+
+        :param cluster: flocker cluster
+        :param node: node the contianer and volume will be on.
+        """
+        client = get_docker_client(cluster, node.public_address)
+        volume_name = random_name(self)
+        # Because flocker/control/schema/types.yml#L250 > 64MiB
+        # "k" and "t" are too big and too small for test
+        # but we to keep some randomness to this test.
+        # also, if a user types in 50mib, flocker defaults to
+        # at least 1G because this is AWS minimums etc, so this test
+        # cannot test all expressions but we test g, gib, gb.
+        size_expressions = list(chain.from_iterable((x, x+"b", x+"ib")
+                                for x in ["g"]))
+        size = str(randint(1, 75)) + str(
+            size_expressions[randint(0, len(size_expressions) - 1)])
+        self._create_volume(client, volume_name,
+                            driver_opts={'size': size})
+        http_port = 8080
+        host_port = find_free_port()[1]
+        cid = self.run_python_container(
+            cluster, node.public_address,
+            {"host_config": client.create_host_config(
+                binds=["{}:/data".format(volume_name)],
+                port_bindings={http_port: host_port},
+                restart_policy={"Name": "always"},
+                privileged=True),
+             "ports": [http_port]},
+            SCRIPTS.child(b"lsblkhttp.py"),
+            [u""], cleanup=False, client=client)
+
+        d = assert_http_server(self,
+                               node.public_address,
+                               host_port, b"/is_http")
+
+        def _get_datasets(unused_arg):
+            return cluster.client.list_datasets_configuration()
+        d.addCallback(_get_datasets)
+
+        def _verify_created_volume_is_size(datasets):
+            dataset = next(d for d in datasets
+                           if d.metadata.get(u'name') == volume_name)
+            self.assertEqual(int(dataset.metadata.get(u'maximum_size')),
+                             parse_num(size))
+        d.addCallback(_verify_created_volume_is_size)
+
+        d.addCallback(lambda _: assert_http_server(
+            self, node.public_address, host_port,
+            expected_response=str(parse_num(size))))
+
+        # cleanups seem racey
+        def _cleanup_in_order(unused_args):
+            client.remove_container(cid, force=True)
+            # client.remove_volume(volume_name)
+        d.addCallback(_cleanup_in_order)
+
+        return d
+
+    @require_cluster(1)
+    def test_create_sized_volume_with_v2_plugin_api(self, cluster):
+        """
+        Docker can run a container with a provisioned volumes with a
+        specific size.
+        """
+        self.require_docker('1.9.0', cluster)
+        return self._test_sized_vol_container(cluster, cluster.nodes[0])
 
     def _test_create_container(self, cluster, volume_name=None):
         """

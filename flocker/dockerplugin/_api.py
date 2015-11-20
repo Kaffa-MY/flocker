@@ -28,7 +28,7 @@ from ..restapi import (
 from ..control._config import dataset_id_from_name
 from ..apiclient import DatasetAlreadyExists
 from ..node.agents.blockdevice import PROFILE_METADATA_KEY
-
+from .testtools import parse_num
 
 SCHEMA_BASE = FilePath(__file__).sibling(b'schema')
 SCHEMAS = {
@@ -231,9 +231,15 @@ class VolumePlugin(object):
         if profile:
             metadata[PROFILE_METADATA_KEY] = profile
 
+        SIZE = DEFAULT_SIZE
+        size_from_opts = opts.get(u"size")
+        if size_from_opts:
+            SIZE = parse_num(size_from_opts)
+            metadata[u"maximum_size"] = unicode(SIZE)
+
         creating = listing.addCallback(
             lambda _: self._flocker_client.create_dataset(
-                self._node_id, DEFAULT_SIZE, metadata=metadata,
+                self._node_id, SIZE, metadata=metadata,
                 dataset_id=UUID(dataset_id_from_name(Name))))
         creating.addErrback(lambda reason: reason.trap(DatasetAlreadyExists))
         creating.addCallback(lambda _: {u"Err": None})

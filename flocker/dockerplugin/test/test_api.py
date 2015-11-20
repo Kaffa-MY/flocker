@@ -5,6 +5,7 @@ Tests for the Volumes Plugin API provided by the plugin.
 """
 
 from uuid import uuid4, UUID
+from random import randint
 
 from twisted.web.http import OK
 from twisted.internet import reactor
@@ -17,6 +18,7 @@ from ...control._config import dataset_id_from_name
 from ...testtools import CustomException
 
 from ...node.testtools import require_docker_version
+from ..testtools import parse_num
 
 from ...restapi import make_bad_request
 from ...restapi.testtools import buildIntegrationTests, APIAssertionsMixin
@@ -64,15 +66,17 @@ class APITestsMixin(APIAssertionsMixin):
         '1.9.0',
         'This test uses the v2 plugin API, which requires Docker >=1.9.0'
     )
-    def test_create_with_opts(self):
+    def test_create_with_profile(self):
         """
         Calling the ``/VolumerDriver.Create`` API with an ``Opts`` value
-        in the request body JSON ignores this parameter and creates
-        a volume with the given name.
+        of "profile=[gold,silver,bronze] in the request body JSON create a
+        volume with a given name with [gold,silver,bronze] profile.
         """
+        default_profiles = ["gold", "silver", "bronze"]
         name = u"testvolume"
+        profile = default_profiles[randint(0, 2)]
         d = self.assertResult(b"POST", b"/VolumeDriver.Create",
-                              {u"Name": name, 'Opts': {'ignored': 'ignored'}},
+                              {u"Name": name, 'Opts': {u"profile": profile}},
                               OK, {u"Err": None})
         d.addCallback(
             lambda _: self.flocker_client.list_datasets_configuration())
@@ -80,7 +84,35 @@ class APITestsMixin(APIAssertionsMixin):
             Dataset(dataset_id=UUID(dataset_id_from_name(name)),
                     primary=self.NODE_A,
                     maximum_size=DEFAULT_SIZE,
-                    metadata={u"name": name})])
+                    metadata={u"name": name,
+                              u"clusterhq:flocker:profile":
+                              unicode(profile)})])
+        return d
+
+    @require_docker_version(
+        '1.9.0',
+        'This test uses the v2 plugin API, which requires Docker >=1.9.0'
+    )
+    def test_create_with_size(self):
+        """
+        Calling the ``/VolumerDriver.Create`` API with an ``Opts`` value
+        of "size=<somesize> in the request body JSON create a Volumes
+        with a given name and random size between 1-100G
+        """
+        name = u"testvolume"
+        # Cant be below 64 MiB flocker/control/schema/types.yml#L250
+        random_size = str(randint(1, 100))+"G"
+        d = self.assertResult(b"POST", b"/VolumeDriver.Create",
+                              {u"Name": name, 'Opts': {u"size": random_size}},
+                              OK, {u"Err": None})
+        d.addCallback(
+            lambda _: self.flocker_client.list_datasets_configuration())
+        d.addCallback(self.assertItemsEqual, [
+            Dataset(dataset_id=UUID(dataset_id_from_name(name)),
+                    primary=self.NODE_A,
+                    maximum_size=parse_num(random_size),
+                    metadata={u"name": name, u"maximum_size":
+                              unicode(parse_num(random_size))})])
         return d
 
     def create(self, name):
