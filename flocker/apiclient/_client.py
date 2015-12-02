@@ -3,7 +3,7 @@
 """
 Client for the Flocker REST API.
 """
-
+import logging
 from uuid import UUID, uuid4
 from json import dumps
 from datetime import datetime
@@ -42,8 +42,14 @@ _LOG_HTTP_REQUEST = ActionType(
      Field("response_body", lambda o: o, "JSON response body.")],
     "A HTTP request.")
 
-
 NoneType = type(None)
+
+# permission
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S',
+                    filename='/var/log/flocker.log',
+                    filemode='w')
 
 
 class Dataset(PClass):
@@ -144,6 +150,7 @@ class IFlockerAPIV1Client(Interface):
     """
     The Flocker REST API v1 client.
     """
+
     def create_dataset(primary, maximum_size=None, dataset_id=None,
                        metadata=pmap()):
         """
@@ -362,10 +369,10 @@ class FakeFlockerClient(object):
 
     def list_leases(self):
         return succeed([
-            Lease(dataset_id=l.dataset_id, node_uuid=l.node_id,
-                  expires=((l.expiration - self._NOW).total_seconds()
-                           if l.expiration is not None else None))
-            for l in self._leases.values()])
+                           Lease(dataset_id=l.dataset_id, node_uuid=l.node_id,
+                                 expires=((l.expiration - self._NOW).total_seconds()
+                                          if l.expiration is not None else None))
+                           for l in self._leases.values()])
 
     def version(self):
         return succeed(
@@ -403,6 +410,7 @@ class ResponseError(Exception):
     """
     An unexpected response from the REST API.
     """
+
     def __init__(self, code, body):
         Exception.__init__(self, "Unexpected response code {}:\n{}\n".format(
             code, body))
@@ -420,6 +428,7 @@ class FlockerClient(object):
     """
     A client for the Flocker V1 REST API.
     """
+
     def __init__(self, reactor, host, port,
                  ca_cluster_path, cert_path, key_path):
         """
@@ -483,12 +492,13 @@ class FlockerClient(object):
                 data=data, headers=headers,
                 # Keep tests from having dirty reactor problems:
                 persistent=False
-                ))
+            ))
         request.addCallback(got_result)
 
         def got_body(json_body):
             action.addSuccessFields(response_body=json_body)
             return json_body
+
         request.addCallback(got_body)
         request.addActionFinish()
         return request.result
@@ -524,6 +534,7 @@ class FlockerClient(object):
                                 dataset, {CREATED},
                                 {CONFLICT: DatasetAlreadyExists})
         request.addCallback(self._parse_configuration_dataset)
+        logging.info(u"rest api client, create dataset: received, dataset: %s, request: %s" % (dataset, request))
         return request
 
     def move_dataset(self, primary, dataset_id):
@@ -540,8 +551,9 @@ class FlockerClient(object):
             [
                 self._parse_configuration_dataset(d)
                 for d in results if not d['deleted']
-            ]
+                ]
         )
+        logging.info(u"rest api client, list datasets conf: received, request: %s" % (request,))
         return request
 
     def list_datasets_state(self):
@@ -659,6 +671,7 @@ class FlockerClient(object):
                 )
                 nodes.append(node)
             return nodes
+
         request.addCallback(to_nodes)
 
         return request
@@ -683,6 +696,7 @@ class FlockerClient(object):
                     b"GET", b"/state/nodes/by_era/" + era, None, {OK},
                     {NOT_FOUND: NotFound},
                 ), [NotFound])
+
         request = getting_era.addCallback(got_era)
         request.addCallback(lambda result: UUID(result["uuid"]))
         return request

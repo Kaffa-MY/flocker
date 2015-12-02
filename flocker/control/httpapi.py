@@ -9,6 +9,7 @@ from datetime import datetime
 from pytz import UTC
 
 import yaml
+import logging
 
 from pyrsistent import pmap, thaw
 
@@ -45,8 +46,8 @@ from ._persistence import update_leases
 from ._model import LeaseError
 
 from .. import __version__, REST_API_PORT as _port
-REST_API_PORT = _port  # Some modules expect this constant to be here
 
+REST_API_PORT = _port  # Some modules expect this constant to be here
 
 SCHEMA_BASE = FilePath(__file__).parent().child(b'schema')
 SCHEMAS = {
@@ -54,7 +55,7 @@ SCHEMAS = {
         SCHEMA_BASE.child(b'types.yml').getContent()),
     b'/v1/endpoints.json': yaml.safe_load(
         SCHEMA_BASE.child(b'endpoints.yml').getContent()),
-    }
+}
 
 CONTAINER_NAME_COLLISION = make_bad_request(
     code=CONFLICT, description=u"The container name already exists."
@@ -91,6 +92,13 @@ LEASE_HELD = make_bad_request(
 NODE_BY_ERA_NOT_FOUND = make_bad_request(
     code=NOT_FOUND, description=u"No node found with given era.")
 _UNDEFINED_MAXIMUM_SIZE = object()
+
+# permission denied
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
+                    datefmt='%a, %d %b %Y %H:%M:%S',
+                    filename='/var/log/flocker.log',
+                    filemode='w')
 
 
 class ConfigurationAPIUserV1(object):
@@ -136,7 +144,7 @@ class ConfigurationAPIUserV1(object):
         """
         Return the ``flocker`` version string.
         """
-        return {u"flocker":  __version__}
+        return {u"flocker": __version__}
 
     @app.route("/configuration/datasets", methods=['GET'])
     @user_documentation(
@@ -151,7 +159,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets_list',
+                '/v1/endpoints.json#/definitions/configuration_datasets_list',
         },
         schema_store=SCHEMAS,
     )
@@ -182,11 +190,11 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets_create'
+                '/v1/endpoints.json#/definitions/configuration_datasets_create'
         },
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets'},
+                '/v1/endpoints.json#/definitions/configuration_datasets'},
         schema_store=SCHEMAS
     )
     def create_dataset_configuration(self, primary, dataset_id=None,
@@ -218,6 +226,7 @@ class ConfigurationAPIUserV1(object):
             cluster configuration or giving error information if this is not
             possible.
         """
+
         if dataset_id is None:
             dataset_id = unicode(uuid4())
         dataset_id = dataset_id.lower()
@@ -227,9 +236,12 @@ class ConfigurationAPIUserV1(object):
 
         primary = UUID(hex=primary)
 
+        logging.info(u'create a new dataset: %s' % (dataset_id,))
+
         # Use persistence_service to get a Deployment for the cluster
         # configuration.
         deployment = self.persistence_service.get()
+        logging.info(u'--current deployment: %s' % (deployment,))
         for node in deployment.nodes:
             for manifestation in node.manifestations.values():
                 if manifestation.dataset.dataset_id == dataset_id:
@@ -251,12 +263,16 @@ class ConfigurationAPIUserV1(object):
         new_node_config = primary_node.transform(
             ("manifestations", manifestation.dataset_id), manifestation)
         new_deployment = deployment.update_node(new_node_config)
+        logging.info(u'--new deployment: %s' % (new_deployment,))
         saving = self.persistence_service.save(new_deployment)
 
         def saved(ignored):
             result = api_dataset_from_dataset_and_node(dataset, primary)
+            logging.info(u'--result: %s' % (result,))
             return EndpointResponse(CREATED, result)
+
         saving.addCallback(saved)
+        logging.info(u'--saving: %s' % (saving,))
         return saving
 
     @app.route("/configuration/datasets/<dataset_id>", methods=['DELETE'])
@@ -276,7 +292,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets'},
+                '/v1/endpoints.json#/definitions/configuration_datasets'},
         schema_store=SCHEMAS
     )
     def delete_dataset(self, dataset_id):
@@ -309,6 +325,7 @@ class ConfigurationAPIUserV1(object):
                 new_node.manifestations[dataset_id].dataset, new_node.uuid,
             )
             return EndpointResponse(OK, result)
+
         saving.addCallback(saved)
         return saving
 
@@ -332,10 +349,10 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets_update'},
+                '/v1/endpoints.json#/definitions/configuration_datasets_update'},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_datasets'},
+                '/v1/endpoints.json#/definitions/configuration_datasets'},
         schema_store=SCHEMAS
     )
     def update_dataset(self, dataset_id, primary=None):
@@ -382,6 +399,7 @@ class ConfigurationAPIUserV1(object):
                 current_node.uuid,
             )
             return EndpointResponse(OK, result)
+
         saving.addCallback(saved)
         return saving
 
@@ -400,7 +418,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref': '/v1/endpoints.json#/definitions/state_datasets_array'
-            },
+        },
         schema_store=SCHEMAS
     )
     def state_datasets(self):
@@ -452,7 +470,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_containers_array',
+                '/v1/endpoints.json#/definitions/configuration_containers_array',
         },
         schema_store=SCHEMAS,
     )
@@ -480,7 +498,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/state_containers_array',
+                '/v1/endpoints.json#/definitions/state_containers_array',
         },
         schema_store=SCHEMAS,
     )
@@ -523,8 +541,8 @@ class ConfigurationAPIUserV1(object):
         if not any(n for (_, n) in instances if n.uuid == node_uuid):
             raise DATASET_ON_DIFFERENT_NODE
         if any(app for app in deployment.applications() if
-                app.volume and
-                app.volume.manifestation.dataset_id == volume[u"dataset_id"]):
+               app.volume and
+                               app.volume.manifestation.dataset_id == volume[u"dataset_id"]):
             raise DATASET_IN_USE
 
         return AttachedVolume(
@@ -563,9 +581,9 @@ class ConfigurationAPIUserV1(object):
         schema_store=SCHEMAS
     )
     def create_container_configuration(
-        self, node_uuid, name, image, ports=(), environment=None,
-        restart_policy=None, cpu_shares=None, memory_limit=None,
-        links=(), volumes=(), command_line=None,
+            self, node_uuid, name, image, ports=(), environment=None,
+            restart_policy=None, cpu_shares=None, memory_limit=None,
+            links=(), volumes=(), command_line=None,
     ):
         """
         Create a new dataset in the cluster configuration.
@@ -706,6 +724,7 @@ class ConfigurationAPIUserV1(object):
         def saved(_):
             result = container_configuration_response(application, node_uuid)
             return EndpointResponse(CREATED, result)
+
         saving.addCallback(saved)
         return saving
 
@@ -723,11 +742,11 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_container_update',
+                '/v1/endpoints.json#/definitions/configuration_container_update',
         },
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_container',
+                '/v1/endpoints.json#/definitions/configuration_container',
         },
         schema_store=SCHEMAS,
     )
@@ -826,7 +845,7 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={},
         outputSchema={"$ref":
-                      '/v1/endpoints.json#/definitions/nodes_array'},
+                          '/v1/endpoints.json#/definitions/nodes_array'},
         schema_store=SCHEMAS
     )
     def list_current_nodes(self):
@@ -858,7 +877,7 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={},
         outputSchema={"$ref":
-                      '/v1/endpoints.json#/definitions/node'},
+                          '/v1/endpoints.json#/definitions/node'},
         schema_store=SCHEMAS
     )
     def get_node_by_era(self, era):
@@ -878,7 +897,7 @@ class ConfigurationAPIUserV1(object):
     @structured(
         inputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/configuration_compose'
+                '/v1/endpoints.json#/definitions/configuration_compose'
         },
         outputSchema={},
         schema_store=SCHEMAS
@@ -921,7 +940,7 @@ class ConfigurationAPIUserV1(object):
         inputSchema={},
         outputSchema={
             '$ref':
-            '/v1/endpoints.json#/definitions/list_leases'
+                '/v1/endpoints.json#/definitions/list_leases'
         },
         schema_store=SCHEMAS
     )
