@@ -3,9 +3,10 @@
 """
 ZFS APIs.
 """
-import logging
+
 from __future__ import absolute_import
 
+import logging
 import os
 from contextlib import contextmanager
 from uuid import uuid4
