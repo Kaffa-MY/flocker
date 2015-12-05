@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+git checkout mydev
+git pull
+
 # Move Python code from the Git clone to where they are used
 rm -rf /opt/flocker/lib/python2.7/site-packages/flocker/
 cp -r /flocker-source/flocker/flocker/ /opt/flocker/lib/python2.7/site-packages/

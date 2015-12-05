@@ -567,6 +567,7 @@ class StoragePool(Service):
                          # New filesystem we're cloning to:
                          new_filesystem.name,
                          ]
+        logging.info(u'zfs clone: %s' % (clone_command,))
         d.addCallback(lambda _: zfs_command(self._reactor, clone_command))
         self._created(d, volume)
         d.addCallback(lambda _: new_filesystem)
