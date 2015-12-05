@@ -252,6 +252,8 @@ class Filesystem(object):
         snapshot = b"%s@%s" % (self.name, uuid4())
         check_call([b"zfs", b"snapshot", snapshot])
 
+        logging.info(u'zfs create snapshot %s' % (snapshot,))
+
         # Determine whether there is a shared snapshot which can be used as the
         # basis for an incremental send.
         local_snapshots = list(
@@ -278,6 +280,7 @@ class Filesystem(object):
             ]
 
         process = Popen([b"zfs", b"send"] + identifier, stdout=PIPE)
+        logging.info(u'-- send snapshot, identifier %s' % (identifier,))
         try:
             yield process.stdout
         finally:
@@ -314,6 +317,7 @@ class Filesystem(object):
             # If the filesystem doesn't already exist then this is a complete
             # data stream.
             cmd = [b"zfs", b"receive", self.name]
+        logging.info(u'zfs receive snapshot: %s' % (cmd,))
         process = Popen(cmd, stdin=PIPE)
         succeeded = False
         try:
@@ -325,6 +329,7 @@ class Filesystem(object):
             check_call([b"zfs", b"set",
                         b"mountpoint=" + self._mountpoint.path,
                         self.name])
+            logging.info(u'-- succeeded, mountpoint=%s, name=%s' % (self._mountpoint, self.name))
 
 
 @implementer(IFilesystemSnapshots)

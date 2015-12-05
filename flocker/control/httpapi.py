@@ -369,8 +369,11 @@ class ConfigurationAPIUserV1(object):
             cluster configuration or giving error information if this is not
             possible.
         """
+        logging.info(u'move dataset %s to node %s' % (dataset_id, primary,))
         # Get the current configuration.
         deployment = self.persistence_service.get()
+
+        logging.info(u'-- current deployment: %s' % (deployment,))
 
         # Raises DATASET_NOT_FOUND if the ``dataset_id`` is not found.
         primary_manifestation, current_node = _find_manifestation_and_node(
@@ -385,6 +388,7 @@ class ConfigurationAPIUserV1(object):
                 deployment, dataset_id, UUID(hex=primary)
             )
 
+        logging.info(u'-- new deployment: %s' % (deployment,))
         saving = self.persistence_service.save(deployment)
 
         primary_manifestation, current_node = _find_manifestation_and_node(
