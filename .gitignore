@@ -78,3 +78,6 @@ vagrant/dev/*.box
 ehthumbs.db
 Thumbs.db
 jobs.groovy
+
+# ide
+.idea/
