@@ -38,7 +38,7 @@ from .._model import VolumeSize
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S',
-                    filename='/var/log/flocker.log',
+                    filename='/var/log/flocker.zfs.log',
                     filemode='w')
 
 
