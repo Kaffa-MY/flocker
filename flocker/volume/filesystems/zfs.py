@@ -7,6 +7,7 @@ ZFS APIs.
 from __future__ import absolute_import
 
 import logging
+import traceback
 import os
 from contextlib import contextmanager
 from uuid import uuid4
@@ -43,12 +44,14 @@ logging.basicConfig(level=logging.DEBUG,
 
 class CommandFailed(Exception):
     """The ``zfs`` command failed for some reasons."""
-    logging.info(u'zfs command failed for some reasons.')
+    trace = traceback.format_exc()
+    logging.info(u'zfs command failed for some reasons, trace: %s' % (trace,))
 
 
 class BadArguments(Exception):
     """The ``zfs`` command was called with incorrect arguments."""
-    logging.info(u'zfs command was called with incorrect arguments.')
+    trace = traceback.format_exc()
+    logging.info(u'zfs command was called with incorrect arguments, trace: %s' % (trace,))
 
 
 class _AccumulatingProtocol(Protocol):
@@ -59,7 +62,7 @@ class _AccumulatingProtocol(Protocol):
     def __init__(self):
         self._result = Deferred()
         self._data = b""
-        logging.info(u'_AccumulatingProtocol init: %s' % (self,))
+        logging.info(u'_AccumulatingProtocol init: %s' % (self.__dict__,))
 
     def dataReceived(self, data):
         self._data += data
@@ -459,7 +462,7 @@ class StoragePool(Service):
         self._reactor = reactor
         self._name = name
         self._mount_root = mount_root
-        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root: %s' % (reactor, name, mount_root,))
+        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root: %s' % (reactor.__dict__, name, mount_root,))
 
     def startService(self):
         """
