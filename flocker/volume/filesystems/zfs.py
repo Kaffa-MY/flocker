@@ -7,7 +7,6 @@ ZFS APIs.
 from __future__ import absolute_import
 
 import logging
-import traceback
 import os
 from contextlib import contextmanager
 from uuid import uuid4
@@ -44,14 +43,12 @@ logging.basicConfig(level=logging.DEBUG,
 
 class CommandFailed(Exception):
     """The ``zfs`` command failed for some reasons."""
-    trace = traceback.format_exc()
-    logging.info(u'zfs command failed for some reasons, trace: %s' % (trace,))
+    logging.info(u'zfs command failed for some reasons.')
 
 
 class BadArguments(Exception):
     """The ``zfs`` command was called with incorrect arguments."""
-    trace = traceback.format_exc()
-    logging.info(u'zfs command was called with incorrect arguments, trace: %s' % (trace,))
+    logging.info(u'zfs command was called with incorrect arguments.')
 
 
 class _AccumulatingProtocol(Protocol):
@@ -93,8 +90,10 @@ def zfs_command(reactor, arguments):
         exit code 0), or errbacking with :class:`CommandFailed` or
         :class:`BadArguments` depending on the exit code (1 or 2).
     """
+    logging.info(u'zfs_command, reactor: %s, args: %s' % (reactor.__dict__, arguments))
     endpoint = ProcessEndpoint(reactor, b"zfs", [b"zfs"] + arguments,
                                os.environ)
+    logging.info(u'zfs_command, endpoint: %s' % (endpoint,))
     d = connectProtocol(endpoint, _AccumulatingProtocol())
     d.addCallback(lambda protocol: protocol._result)
     return d
@@ -196,6 +195,7 @@ class Filesystem(object):
 
         :param VolumeSize size: The capacity information for this filesystem.
         """
+        logging.info(u'Filesystem init, pool: %s, dataset: %s, size: %s' % (pool, dataset, size))
         self.pool = pool
         self.dataset = dataset
         self._mountpoint = mountpoint
@@ -203,7 +203,6 @@ class Filesystem(object):
         if reactor is None:
             from twisted.internet import reactor
         self._reactor = reactor
-        logging.info(u'Filesystem init, pool: %s, dataset: %s, size: %s' % (pool, dataset, size))
 
     def _exists(self):
         """
@@ -459,11 +458,11 @@ class StoragePool(Service):
         :param FilePath mount_root: Directory where filesystems should be
             mounted.
         """
+        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root: %s' % (reactor.__dict__, name, mount_root,))
         self._reactor = reactor
         self._name = name
         self._mount_root = mount_root
-        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root: %s' % (reactor.__dict__, name, mount_root,))
-
+        
     def startService(self):
         """
         Make sure that the necessary properties are set on the root Flocker zfs
