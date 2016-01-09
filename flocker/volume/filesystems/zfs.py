@@ -64,6 +64,7 @@ class _AccumulatingProtocol(Protocol):
         self._data += data
 
     def connectionLost(self, reason):
+        logging.info(u'connecgtionLost, reason: %s' % (reason,))
         if reason.check(ConnectionDone):
             self._result.callback(self._data)
         elif reason.check(ProcessTerminated) and reason.value.exitCode == 1:
@@ -603,12 +604,16 @@ class StoragePool(Service):
         new_filesystem = self.get(new_volume)
         new_mount_path = new_filesystem.get_path().path
 
+        logging.info(u'StoragePool._create() trying to create new filesystem %s, new mount path' % (
+            new_filesystem, new_mount_path,))
+
         def creation_failed(f):
             if f.check(CommandFailed):
                 # This isn't the only reason the operation could fail. We
                 # should figure out why and report it appropriately.
                 # https://clusterhq.atlassian.net/browse/FLOC-199
                 raise FilesystemAlreadyExists()
+                logging.info(u'StoragePool._create() create new filesystem %s failed' % (new_filesystem,))
             return f
 
         result.addErrback(creation_failed)
@@ -645,7 +650,7 @@ class StoragePool(Service):
                     self._name, entry.dataset, FilePath(entry.mountpoint),
                     VolumeSize(maximum_size=entry.refquota))
                 result.add(filesystem)
-            logging.info(u"zfs enumerate: %s" % (result,))
+            # logging.info(u"zfs enumerate: %s" % (result,))
             return result
 
         return listing.addCallback(listed)
