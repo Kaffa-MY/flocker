@@ -38,16 +38,17 @@ from .._model import VolumeSize
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S',
-                    filename='/var/log/flocker.zfs.log',
-                    filemode='w')
+                    filename='/var/log/flocker.zfs.log')
 
 
 class CommandFailed(Exception):
     """The ``zfs`` command failed for some reasons."""
+    logging.info(u'zfs command failed for some reasons.')
 
 
 class BadArguments(Exception):
     """The ``zfs`` command was called with incorrect arguments."""
+    logging.info(u'zfs command was called with incorrect arguments.')
 
 
 class _AccumulatingProtocol(Protocol):
@@ -197,6 +198,7 @@ class Filesystem(object):
         if reactor is None:
             from twisted.internet import reactor
         self._reactor = reactor
+        logging.info(u'Filesystem init, pool: %s, dataset: %s, size: %s', (pool, dataset, size))
 
     def _exists(self):
         """
@@ -455,12 +457,14 @@ class StoragePool(Service):
         self._reactor = reactor
         self._name = name
         self._mount_root = mount_root
+        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root', (reactor, name, mount_root,))
 
     def startService(self):
         """
         Make sure that the necessary properties are set on the root Flocker zfs
         storage pool.
         """
+        logging.info(u'StoragePool start service')
         Service.startService(self)
 
         # These next things are logically part of the storage pool creation
