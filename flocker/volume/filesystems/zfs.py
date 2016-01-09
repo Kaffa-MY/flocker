@@ -59,7 +59,8 @@ class _AccumulatingProtocol(Protocol):
     def __init__(self):
         self._result = Deferred()
         self._data = b""
-        logging.info(u'_AccumulatingProtocol init: %s' % (self.__dict__,))
+        logging.info(u'_AccumulatingProtocol init, data: %s, result : %s' % (
+            getattr(self, '_data', ''), getattr(self, '_result', {}).__dict__))
 
     def dataReceived(self, data):
         self._data += data
@@ -93,7 +94,7 @@ def zfs_command(reactor, arguments):
     logging.info(u'zfs_command, reactor: %s, args: %s' % (reactor.__dict__, arguments))
     endpoint = ProcessEndpoint(reactor, b"zfs", [b"zfs"] + arguments,
                                os.environ)
-    logging.info(u'zfs_command, endpoint: %s' % (endpoint,))
+    logging.info(u'zfs_command, endpoint: %s' % (endpoint.__dict__,))
     d = connectProtocol(endpoint, _AccumulatingProtocol())
     d.addCallback(lambda protocol: protocol._result)
     return d
@@ -462,7 +463,7 @@ class StoragePool(Service):
         self._reactor = reactor
         self._name = name
         self._mount_root = mount_root
-        
+
     def startService(self):
         """
         Make sure that the necessary properties are set on the root Flocker zfs
