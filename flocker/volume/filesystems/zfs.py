@@ -59,12 +59,13 @@ class _AccumulatingProtocol(Protocol):
     def __init__(self):
         self._result = Deferred()
         self._data = b""
+        logging.info(u'_AccumulatingProtocol init: %s' % (self,))
 
     def dataReceived(self, data):
         self._data += data
 
     def connectionLost(self, reason):
-        logging.info(u'connecgtionLost, reason: %s' % (reason,))
+        logging.info(u'connectionLost, reason.value: %s' % (reason.value,))
         if reason.check(ConnectionDone):
             self._result.callback(self._data)
         elif reason.check(ProcessTerminated) and reason.value.exitCode == 1:
@@ -199,7 +200,7 @@ class Filesystem(object):
         if reactor is None:
             from twisted.internet import reactor
         self._reactor = reactor
-        logging.info(u'Filesystem init, pool: %s, dataset: %s, size: %s', (pool, dataset, size))
+        logging.info(u'Filesystem init, pool: %s, dataset: %s, size: %s' % (pool, dataset, size))
 
     def _exists(self):
         """
@@ -458,7 +459,7 @@ class StoragePool(Service):
         self._reactor = reactor
         self._name = name
         self._mount_root = mount_root
-        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root', (reactor, name, mount_root,))
+        logging.info(u'StoragePool init, reactor: %s, name: %s, mount_root: %s' % (reactor, name, mount_root,))
 
     def startService(self):
         """
@@ -604,7 +605,7 @@ class StoragePool(Service):
         new_filesystem = self.get(new_volume)
         new_mount_path = new_filesystem.get_path().path
 
-        logging.info(u'StoragePool._create() trying to create new filesystem %s, new mount path' % (
+        logging.info(u'StoragePool._create() trying to create new filesystem: %s, new mount path: %s' % (
             new_filesystem, new_mount_path,))
 
         def creation_failed(f):
@@ -612,8 +613,8 @@ class StoragePool(Service):
                 # This isn't the only reason the operation could fail. We
                 # should figure out why and report it appropriately.
                 # https://clusterhq.atlassian.net/browse/FLOC-199
-                raise FilesystemAlreadyExists()
                 logging.info(u'StoragePool._create() create new filesystem %s failed' % (new_filesystem,))
+                raise FilesystemAlreadyExists()
             return f
 
         result.addErrback(creation_failed)
