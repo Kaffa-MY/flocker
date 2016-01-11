@@ -126,8 +126,10 @@ def _sync_command_error_squashed(arguments, logger):
     :param eliot.Logger logger: The log writer to use to log errors running the
         zfs command.
     """
+    logging.info(u'_sync_command_error_squashed, args: %s, logger: %s' % (arguments, logger,))
     message = None
     log_arguments = b" ".join(arguments)
+    logging.info(u'_sync_command_error_squashed, log_arguments: %s' % (log_arguments,))
     try:
         process = Popen(arguments, stdout=PIPE, stderr=STDOUT)
         output = process.stdout.read()
@@ -141,6 +143,7 @@ def _sync_command_error_squashed(arguments, logger):
                 zfs_command=log_arguments, output=output, status=status)
     if message is not None:
         message.write(logger)
+        logging.info(u'ZFS ERROR message: %s ' % (message,))
 
 
 @attributes(["name"])
