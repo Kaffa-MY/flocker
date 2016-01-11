@@ -651,6 +651,7 @@ class StoragePool(Service):
     def get(self, volume):
         dataset = volume_to_dataset(volume)
         mount_path = self._mount_root.child(dataset)
+        logging.info(u'StoragePool get volume: %s, dataset: %s, mount path: %s' % (volume, dataset, mount_path,))
         return Filesystem(
             self._name, dataset, mount_path, volume.size)
 
@@ -707,6 +708,7 @@ def _list_filesystems(reactor, pool):
          pool])
 
     def listed(output, pool):
+        logging.info(u'_list_filesystems, pool: %s, filesystem outputs: %s' % (pool, output,))
         for line in output.splitlines():
             name, mountpoint, refquota = line.split(b'\t')
             name = name[len(pool) + 1:]
