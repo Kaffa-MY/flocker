@@ -68,12 +68,16 @@ class _AccumulatingProtocol(Protocol):
     def connectionLost(self, reason):
         logging.info(u'connectionLost, reason.value: %s' % (reason.value,))
         if reason.check(ConnectionDone):
+            logging.info(u'connection done.')
             self._result.callback(self._data)
         elif reason.check(ProcessTerminated) and reason.value.exitCode == 1:
+            logging.info(u'connection failed with reason.value.exitCode 1')
             self._result.errback(CommandFailed())
         elif reason.check(ProcessTerminated) and reason.value.exitCode == 2:
+            logging.info(u'connection failed with reason.value.exitCode 2')
             self._result.errback(BadArguments())
         else:
+            logging.info(u'connectionFailed with unknown reason')
             self._result.errback(reason)
         del self._result
 
