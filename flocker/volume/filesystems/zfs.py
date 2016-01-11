@@ -134,16 +134,19 @@ def _sync_command_error_squashed(arguments, logger):
         process = Popen(arguments, stdout=PIPE, stderr=STDOUT)
         output = process.stdout.read()
         status = process.wait()
+        logging.info(u'in try, output: %s, status: %s' % (output, status,))
     except Exception as e:
         message = ZFS_ERROR(
             zfs_command=log_arguments, output=str(e), status=1)
+        logging.info(u'ZFS ERROR message1: %s ' % (message,))
     else:
         if status:
             message = ZFS_ERROR(
                 zfs_command=log_arguments, output=output, status=status)
+            logging.info(u'ZFS ERROR message2: %s ' % (message,))
     if message is not None:
         message.write(logger)
-        logging.info(u'ZFS ERROR message: %s ' % (message,))
+        logging.info(u'ZFS ERROR message3: %s ' % (message,))
 
 
 @attributes(["name"])
